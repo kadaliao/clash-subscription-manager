@@ -1,0 +1,15 @@
+{
+  "clash_dir": "~/.config/clash",
+  "subscriptions": {
+    "x-superflash": {
+      "url": "订阅地址",
+      "enabled": true,
+      "description": "订阅名称"
+    }
+  },
+  "backup": {
+    "enabled": true,
+    "max_backups": 5
+  },
+  "auto_restart": true
+}

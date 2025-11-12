@@ -1,0 +1,9 @@
+# Clash API 配置示例
+# 复制此文件为 .clash-api-config 并填入实际的配置
+
+# Clash API 地址（默认端口是 9090）
+CLASH_API_URL=http://127.0.0.1:9090
+
+# Clash API 访问密钥
+# 可以在 Clash Verge 的设置中找到
+CLASH_API_SECRET=your-secret-here

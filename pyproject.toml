@@ -1,0 +1,14 @@
+[project]
+name = "clash-subscription-manager"
+version = "0.1.0"
+description = "A simple tool to manage and update Clash proxy subscriptions"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+clash-sub = "clash_sub_manager:main"
+
+[tool.uv]
+index-url = "https://mirrors.aliyun.com/pypi/simple/"
