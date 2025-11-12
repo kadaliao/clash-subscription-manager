@@ -1,73 +1,44 @@
 # Clash 订阅管理器
 
-一个简单易用的 Python 工具集，用于管理和更新 Clash 代理订阅配置，以及快速切换代理节点。
+用于管理 Clash Verge 代理订阅配置和快速切换节点的命令行工具。
 
-## ✨ 特性
+## 特性
 
-### 订阅管理 (clash-sub)
-- 📝 **配置文件管理** - 使用 JSON 配置文件保存订阅地址，不用再记忆
-- 🔄 **一键更新** - 快速更新单个或所有订阅
-- 💾 **自动备份** - 更新前自动备份配置，支持保留多个历史版本
-- 🎨 **友好界面** - 彩色终端输出，信息清晰易读
-- 🔧 **灵活管理** - 添加、删除、启用/禁用订阅
-- 🚀 **自动重启** - 更新后可自动重启 Clash 服务
+- **订阅管理** - 更新订阅、自动备份、添加/删除订阅
+- **自动同步** - 自动更新 Clash Verge 配置并重新加载，无需手动操作
+- **配置验证** - 自动验证配置格式，确保下载的是 Clash 格式
+- **节点管理** - 查看节点、延迟测试、快速切换
 
-### 代理管理 (clash-proxy)
-- 🎯 **节点选择** - 快速查看和切换代理节点
-- 📊 **延迟测试** - 测试所有节点延迟，自动排序
-- 🔍 **策略组管理** - 查看和管理策略组配置
-- ⚡ **API 集成** - 通过 Clash API 实时控制代理
+## 快速开始
 
-### 通用特性
-- ⚡ **现代化工具** - 使用 uv 管理依赖，速度快、零配置
-- 🇨🇳 **国内优化** - 预配置阿里云镜像源，下载速度快
-- 🔐 **配置文件** - 支持 .clash-api-config 统一管理 API 配置
-
-## 📦 安装
-
-### 1. 克隆或下载项目
+### 1. 安装依赖
 
 ```bash
-git clone <repository-url>
-cd clash-subscription-manager
-```
-
-### 2. 安装 uv（如果还未安装）
-
-```bash
-# macOS/Linux
+# 安装 uv（如未安装）
 brew install uv
 
-# 或者使用官方安装脚本
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### 3. 安装依赖
-
-使用 uv 自动创建虚拟环境并安装依赖（已配置阿里云镜像源，国内下载速度快）：
-
-```bash
+# 克隆项目并安装依赖
+git clone <repository-url>
+cd clash-subscription-manager
 uv sync
 ```
 
-### 4. 配置订阅
-
-复制示例配置并编辑：
+### 2. 配置订阅
 
 ```bash
 cp config.json.sample config.json
+# 编辑 config.json，填入订阅 URL
 ```
 
-编辑 `config.json` 文件，填入你的订阅信息：
-
+配置示例：
 ```json
 {
   "clash_dir": "~/.config/clash",
   "subscriptions": {
-    "x-superflash": {
-      "url": "https://your-subscription-url-here",
+    "my-proxy": {
+      "url": "https://your-subscription-url",
       "enabled": true,
-      "description": "X-Superflash 订阅"
+      "description": "我的代理"
     }
   },
   "backup": {
@@ -78,353 +49,129 @@ cp config.json.sample config.json
 }
 ```
 
-### 5. 配置 Clash API（可选，用于代理管理）
+> **重要：** 订阅 URL 需要与 Clash Verge 中添加的订阅 URL **完全一致**，这样工具才能自动同步配置
 
-如果需要使用 `clash-proxy` 工具管理代理节点，需要配置 Clash API：
+### 3. 配置 Clash API
 
-创建 `.clash-api-config` 文件（或复制示例）：
+用于自动重新加载配置和节点管理功能：
 
 ```bash
 cat > .clash-api-config << 'EOF'
-# Clash API 配置
-# 这个文件存储你的 Clash API 访问信息
-
 CLASH_API_URL=http://127.0.0.1:9090
 CLASH_API_SECRET=your-secret-here
 EOF
 ```
 
-> 💡 提示：Clash API 的端口和密钥可以在 Clash Verge 的设置中找到
+**如何获取 API 配置：**
+1. 打开 Clash Verge 应用
+2. 进入「设置」→「Clash 内核」
+3. 查看「外部控制器」的地址和端口（通常是 `127.0.0.1:9090`）
+4. 查看「Secret」密钥并填入上面的配置文件
 
-## 🚀 使用方法
+> **注意：** 配置 API 后，更新订阅会自动同步到 Clash Verge 并重新加载配置
 
-项目提供了两个工具：
-- `clash-sub` - 订阅管理工具
-- `clash-proxy` - 代理节点管理工具
+## 使用方法
 
-### 方式一：使用便捷脚本（推荐）
-
-```bash
-# 直接运行（已自动处理路径和虚拟环境）
-./clash-sub list
-./clash-proxy groups
-```
-
-### 方式二：使用 uv run
+### 订阅管理 (clash-sub)
 
 ```bash
-uv run python clash_sub_manager.py list
-uv run python clash_proxy_selector.py groups
+./clash-sub list                           # 查看所有订阅
+./clash-sub update <name>                  # 更新指定订阅（自动同步）
+./clash-sub update-all                     # 更新所有订阅（自动同步）
+./clash-sub add <name> <url> [desc]        # 添加订阅
+./clash-sub remove <name>                  # 删除订阅
+./clash-sub toggle <name>                  # 启用/禁用订阅
+./clash-sub restart                        # 重启 Clash 服务
 ```
 
----
+**工作流程：**
 
-## 📚 订阅管理 (clash-sub)
+执行 `./clash-sub update <name>` 时会自动：
+1. 下载订阅配置并验证格式
+2. 备份旧配置（保留最近 5 个版本）
+3. 更新 Clash Verge 的配置文件
+4. 通过 API 重新加载配置
 
-### 查看所有订阅
+全程无需手动操作！
+
+### 节点管理 (clash-proxy)
 
 ```bash
-./clash-sub list
+./clash-proxy groups                       # 查看策略组
+./clash-proxy nodes                        # 查看所有节点
+./clash-proxy current                      # 查看当前选择
+./clash-proxy test                         # 测试节点延迟
+./clash-proxy switch <group> <node>        # 切换节点
 ```
 
-显示所有已配置的订阅，包括状态、描述、文件大小和更新时间。
+## 使用建议
 
-### 更新指定订阅
+### 设置别名
 
-```bash
-./clash-sub update x-superflash
-```
-
-更新指定名称的订阅配置。
-
-### 更新所有订阅
-
-```bash
-./clash-sub update-all
-```
-
-更新所有启用的订阅配置。
-
-### 添加新订阅
-
-```bash
-./clash-sub add myproxy "https://example.com/subscription" "我的代理"
-```
-
-参数说明：
-- `myproxy` - 订阅名称（必填）
-- 订阅 URL（必填）
-- 描述信息（可选）
-
-### 删除订阅
-
-```bash
-./clash-sub remove myproxy
-```
-
-### 启用/禁用订阅
-
-```bash
-./clash-sub toggle myproxy
-```
-
-切换订阅的启用状态。禁用的订阅不会在 `update-all` 时更新。
-
-### 重启 Clash 服务
-
-```bash
-./clash-sub restart
-```
-
-手动重启 Clash 服务以应用新配置。
-
----
-
-## 🎯 代理管理 (clash-proxy)
-
-### 查看策略组
-
-```bash
-./clash-proxy groups
-```
-
-显示所有策略组及其当前选择的节点。
-
-### 查看所有节点
-
-```bash
-./clash-proxy nodes
-```
-
-列出所有可用的代理节点及其延迟信息。
-
-### 查看当前选择
-
-```bash
-./clash-proxy current
-```
-
-显示各个策略组当前选择的节点及延迟。
-
-### 测试节点延迟
-
-```bash
-./clash-proxy test
-```
-
-测试所有节点的延迟并按速度排序显示。
-
-### 切换节点
-
-```bash
-./clash-proxy switch PROXY "Hong Kong 01"
-```
-
-切换指定策略组到指定节点。
-
-> 💡 提示：如果节点名包含空格，需要用引号括起来
-
-## 📋 配置说明
-
-### config.json - 订阅配置
-
-```json
-{
-  "clash_dir": "~/.config/clash",        // Clash 配置目录
-  "subscriptions": {                      // 订阅列表
-    "订阅名称": {
-      "url": "订阅URL",                   // 必填
-      "enabled": true,                    // 是否启用
-      "description": "描述信息"           // 可选描述
-    }
-  },
-  "backup": {
-    "enabled": true,                      // 是否启用自动备份
-    "max_backups": 5                      // 保留的备份数量
-  },
-  "auto_restart": true                    // 更新后是否自动重启 Clash
-}
-```
-
-### .clash-api-config - API 配置
-
-```bash
-# Clash API 配置
-CLASH_API_URL=http://127.0.0.1:9090
-CLASH_API_SECRET=your-secret-here
-```
-
-参数说明：
-- `CLASH_API_URL`: Clash API 地址（通常是 http://127.0.0.1:9090）
-- `CLASH_API_SECRET`: API 访问密钥（在 Clash 设置中可以找到）
-
-> 💡 Python 脚本会自动读取此配置文件，命令行参数 `--api` 和 `--secret` 可以覆盖配置文件的设置
-
-## 💡 使用建议
-
-### 1. 设置别名（强烈推荐）
-
-在 `~/.zshrc` 或 `~/.bashrc` 中添加：
-
-```bash
-# 获取项目的绝对路径
-PROJECT_DIR="/path/to/clash-subscription-manager"
-
-alias clash-sub="$PROJECT_DIR/clash-sub"
-alias clash-proxy="$PROJECT_DIR/clash-proxy"
-```
-
-或者添加到 PATH：
+在 `~/.zshrc` 或 `~/.bashrc` 添加：
 
 ```bash
 export PATH="/path/to/clash-subscription-manager:$PATH"
 ```
 
-然后就可以在任何目录直接使用：
+### 定时更新
 
 ```bash
-clash-sub list
-clash-sub update-all
-clash-proxy groups
-clash-proxy test
-```
-
-### 2. 定时自动更新
-
-使用 cron 定时任务自动更新订阅：
-
-```bash
-# 编辑 crontab
-crontab -e
-
-# 添加以下行（每天凌晨 3 点更新）
+# 添加 cron 任务（每天凌晨 3 点更新）
 0 3 * * * /path/to/clash-subscription-manager/clash-sub update-all
 ```
 
-### 3. 快速切换订阅
-
-如果你有多个订阅源，可以：
-
-```bash
-# 禁用当前订阅
-clash-sub toggle x-superflash
-
-# 添加并启用新订阅
-clash-sub add backup-proxy "https://backup-url" "备用订阅"
-clash-sub update backup-proxy
-```
-
-### 4. 快速切换到最快节点
-
-```bash
-# 测试所有节点并查看最快的
-clash-proxy test
-
-# 切换到最快的节点
-clash-proxy switch PROXY "最快节点名称"
-```
-
-## 🔧 高级功能
-
-### 备份管理
-
-- 备份文件保存在 `~/.config/clash/backups/` 目录
-- 文件名格式：`订阅名.时间戳.yaml`
-- 自动清理超出数量限制的旧备份
-
-### 多订阅管理
-
-你可以在 `config.json` 中配置多个订阅：
-
-```json
-{
-  "subscriptions": {
-    "main": {
-      "url": "https://main-subscription-url",
-      "enabled": true,
-      "description": "主订阅"
-    },
-    "backup": {
-      "url": "https://backup-subscription-url",
-      "enabled": false,
-      "description": "备用订阅"
-    }
-  }
-}
-```
-
-然后可以快速切换：
-
-```bash
-clash-sub toggle main      # 禁用主订阅
-clash-sub toggle backup    # 启用备用订阅
-clash-sub update backup    # 更新备用订阅
-```
-
-## 📝 示例输出
-
-### 列出订阅
-
-```
-============================================================
-订阅列表
-============================================================
-
-📦 x-superflash
-   状态: 启用
-   描述: X-Superflash 订阅
-   URL: https://example.com/subscription...
-   文件: 存在 (94.0 KB)
-   更新: 2025-06-13 22:18:00
-```
+## 使用示例
 
 ### 更新订阅
-
-```
+```bash
+$ ./clash-sub update x-superflash
 ============================================================
 更新订阅: x-superflash
 ============================================================
 
-✓ 备份已保存: x-superflash.20250613_221800.yaml
+✓ 备份已保存: x-superflash.20251113_004117.yaml
 正在下载配置...
-✓ 配置已更新 (大小: 94.5 KB)
-✓ 代理节点数量: 15
-
-正在重启 Clash 服务...
-✓ Clash 服务已重启
+✓ 配置已更新 (大小: 96.7 KB)
+✓ 代理节点数量: 33
+✓ 已更新 Clash Verge 配置文件
+✓ 已通过 API 重新加载配置
 ```
 
-## ⚠️ 注意事项
+### 查看节点状态
+```bash
+$ ./clash-proxy current
+======================================================================
+当前代理选择
+======================================================================
 
-1. **订阅 URL 安全** - 配置文件包含订阅 URL，请妥善保管
-2. **网络连接** - 更新订阅需要网络连接
-3. **权限问题** - 重启 Clash 服务可能需要 sudo 权限
-4. **配置兼容性** - 确保下载的配置文件与你的 Clash 版本兼容
+📦 🔰 节点选择    [Selector  ] -> 极速 专线 美国 03 282ms
+📦 ♻️ 自动选择    [URLTest   ] -> 极速 专线 日本 02 100ms
+📦 🌏 ChatGPT    [Selector  ] -> 极速 专线 日本 01 98ms
+```
 
-## 🐛 故障排除
+## 故障排除
 
 ### 无法下载订阅
+- 检查网络连接是否正常
+- 确认订阅 URL 是否有效且可访问
+- 确保订阅服务商支持 Clash 格式（工具会自动添加 Clash User-Agent）
 
-- 检查网络连接
-- 确认订阅 URL 是否有效
-- 检查是否需要代理才能访问订阅 URL
+### 配置格式错误
+- 工具会自动验证下载的配置是否为有效的 Clash YAML 格式
+- 如果提示格式错误，请联系订阅服务商获取 Clash 专用订阅链接
+- 或使用订阅转换服务（如 sub-web）转换为 Clash 格式
 
-### 无法重启服务
+### 更新后节点仍然超时
+- 确保已配置 `.clash-api-config` 文件
+- 检查 Clash Verge 的外部控制器是否已启用
+- 查看更新日志中是否显示"✓ 已通过 API 重新加载配置"
 
-- 尝试手动重启 Clash 应用
-- 检查 Clash 服务是否正在运行
-- 确认服务名称是否正确
+### 未找到 Clash Verge 配置
+- 确保使用的是 Clash Verge 而不是其他 Clash 客户端
+- 订阅 URL 需要与 Clash Verge 中添加的订阅 URL 完全一致
+- 如果手动修改过 config.json 中的 URL，需要在 Clash Verge 中也同步修改
 
-### 配置文件格式错误
-
-- 使用 JSON 验证工具检查 config.json
-- 确保所有引号和逗号正确
-- URL 中如有特殊字符需要转义
-
-## 📄 许可证
+## 许可证
 
 MIT License
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！

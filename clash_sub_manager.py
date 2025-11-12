@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Dict, Optional
 import argparse
 import requests
+import yaml
 
 
 class Colors:
@@ -153,7 +154,11 @@ class ClashSubscriptionManager:
         temp_file = config_file.with_suffix('.yaml.tmp')
 
         try:
-            response = requests.get(sub['url'], timeout=30)
+            # 添加 Clash 特定的 User-Agent，确保订阅服务器返回 Clash 格式
+            headers = {
+                'User-Agent': 'clash-verge/v1.3.8'
+            }
+            response = requests.get(sub['url'], headers=headers, timeout=30)
             response.raise_for_status()
 
             # 检查内容
@@ -172,6 +177,31 @@ class ClashSubscriptionManager:
                 temp_file.unlink()
                 return False
 
+            # 验证是否为有效的 YAML 格式
+            try:
+                with open(temp_file, 'r', encoding='utf-8') as f:
+                    config_data = yaml.safe_load(f)
+
+                    # 检查是否包含 Clash 必需的字段
+                    if not isinstance(config_data, dict):
+                        print(f"{Colors.RED}✗ 配置文件格式错误：不是有效的 YAML 对象{Colors.NC}")
+                        temp_file.unlink()
+                        return False
+
+                    if 'proxies' not in config_data and 'proxy-providers' not in config_data:
+                        print(f"{Colors.RED}✗ 配置文件格式错误：缺少 proxies 或 proxy-providers 字段{Colors.NC}")
+                        print(f"{Colors.YELLOW}  提示：订阅链接可能不是 Clash 格式{Colors.NC}")
+                        temp_file.unlink()
+                        return False
+
+            except yaml.YAMLError as e:
+                print(f"{Colors.RED}✗ 配置文件不是有效的 YAML 格式: {e}{Colors.NC}")
+                print(f"{Colors.YELLOW}  提示：请检查订阅链接是否支持 Clash 格式{Colors.NC}")
+                temp_file.unlink()
+                return False
+            except Exception as e:
+                print(f"{Colors.YELLOW}⚠ 警告：无法验证配置文件格式，继续更新: {e}{Colors.NC}")
+
             # 替换原文件
             shutil.move(str(temp_file), str(config_file))
             print(f"{Colors.GREEN}✓ 配置已更新 (大小: {size/1024:.1f} KB){Colors.NC}")
@@ -179,11 +209,14 @@ class ClashSubscriptionManager:
             # 显示节点数量
             try:
                 with open(config_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    proxy_count = content.count('- {') + content.count('- name:')
+                    config_content = yaml.safe_load(f)
+                    proxy_count = len(config_content.get('proxies', []))
                     print(f"{Colors.GREEN}✓ 代理节点数量: {proxy_count}{Colors.NC}")
             except:
                 pass
+
+            # 尝试通过 API 重新加载配置
+            self.reload_clash_config(config_file)
 
             return True
 
@@ -222,8 +255,181 @@ class ClashSubscriptionManager:
         print(f"{Colors.GREEN}✓ 更新完成: {success_count}/{len(enabled_subs)}{Colors.NC}")
         print(f"{Colors.CYAN}{'='*60}{Colors.NC}\n")
 
-    def restart_clash(self):
+    def update_clash_verge_profile(self, config_file: Path, sub_url: str) -> bool:
+        """更新 Clash Verge 的配置文件"""
+        try:
+            # Clash Verge 配置目录
+            verge_dir = Path.home() / "Library/Application Support/io.github.clash-verge-rev.clash-verge-rev"
+            profiles_yaml = verge_dir / "profiles.yaml"
+
+            if not profiles_yaml.exists():
+                print(f"{Colors.YELLOW}⚠ 未找到 Clash Verge 配置，使用传统方式{Colors.NC}")
+                return False
+
+            # 读取 profiles.yaml
+            with open(profiles_yaml, 'r', encoding='utf-8') as f:
+                profiles_data = yaml.safe_load(f)
+
+            # 查找匹配的配置
+            profile_uid = None
+            for item in profiles_data.get('items', []):
+                if item.get('url') == sub_url:
+                    profile_uid = item['uid']
+                    break
+
+            if not profile_uid:
+                print(f"{Colors.YELLOW}⚠ 未在 Clash Verge 中找到此订阅{Colors.NC}")
+                return False
+
+            # 复制配置文件到 Clash Verge
+            verge_profile = verge_dir / "profiles" / f"{profile_uid}.yaml"
+            shutil.copy2(config_file, verge_profile)
+
+            # 更新时间戳
+            import time
+            for item in profiles_data['items']:
+                if item['uid'] == profile_uid:
+                    item['updated'] = int(time.time())
+                    break
+
+            # 保存 profiles.yaml
+            with open(profiles_yaml, 'w', encoding='utf-8') as f:
+                yaml.dump(profiles_data, f, allow_unicode=True, default_flow_style=False)
+
+            print(f"{Colors.GREEN}✓ 已更新 Clash Verge 配置文件{Colors.NC}")
+
+            # 如果是当前使用的配置，尝试重新加载
+            if profiles_data.get('current') == profile_uid:
+                return self.reload_clash_core()
+            else:
+                print(f"{Colors.YELLOW}  提示: 该配置未激活，请在 Clash Verge 中切换使用{Colors.NC}")
+                return True
+
+        except Exception as e:
+            print(f"{Colors.YELLOW}⚠ 更新 Clash Verge 配置失败: {e}{Colors.NC}")
+            return False
+
+    def reload_clash_core(self) -> bool:
+        """通过 API 重新加载 Clash 核心"""
+        try:
+            # 读取 API 配置
+            api_config_file = Path(__file__).parent / ".clash-api-config"
+            api_url = "http://127.0.0.1:9090"
+            secret = ""
+
+            if api_config_file.exists():
+                with open(api_config_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#'):
+                            continue
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            if key.strip() == 'CLASH_API_URL':
+                                api_url = value.strip()
+                            elif key.strip() == 'CLASH_API_SECRET':
+                                secret = value.strip()
+
+            # 设置请求头
+            headers = {}
+            if secret:
+                headers['Authorization'] = f'Bearer {secret}'
+
+            # 通过 API 重新加载配置（force reload）
+            response = requests.post(
+                f"{api_url}/configs/reload",
+                headers=headers,
+                timeout=5
+            )
+
+            # 某些版本可能不支持 reload endpoint，尝试 PATCH configs
+            if response.status_code == 404:
+                response = requests.patch(
+                    f"{api_url}/configs",
+                    headers={**headers, 'Content-Type': 'application/json'},
+                    json={'mode': 'rule'},  # 发送一个无害的配置更新来触发重载
+                    timeout=5
+                )
+
+            if response.status_code < 400:
+                print(f"{Colors.GREEN}✓ 已通过 API 重新加载配置{Colors.NC}")
+                return True
+            else:
+                print(f"{Colors.YELLOW}⚠ API 重载失败 (状态码: {response.status_code})，请手动刷新{Colors.NC}")
+                return False
+
+        except Exception as e:
+            print(f"{Colors.YELLOW}⚠ 无法通过 API 重新加载: {e}{Colors.NC}")
+            print(f"{Colors.YELLOW}  提示: 配置已更新，在 Clash Verge 中点击「刷新」按钮即可{Colors.NC}")
+            return False
+
+    def reload_clash_config(self, config_file: Path) -> bool:
+        """重新加载 Clash 配置"""
+        # 获取订阅 URL
+        sub_url = None
+        for name, sub in self.config['subscriptions'].items():
+            if self.clash_dir / f"{name}.yaml" == config_file:
+                sub_url = sub['url']
+                break
+
+        if not sub_url:
+            return False
+
+        # 尝试更新 Clash Verge 配置
+        return self.update_clash_verge_profile(config_file, sub_url)
+
+    def check_clash_config(self) -> bool:
+        """检查 Clash 是否有可用的配置"""
+        try:
+            # 尝试读取 API 配置
+            api_config_file = Path(__file__).parent / ".clash-api-config"
+            api_url = "http://127.0.0.1:9090"
+            secret = ""
+
+            if api_config_file.exists():
+                with open(api_config_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#'):
+                            continue
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            if key.strip() == 'CLASH_API_URL':
+                                api_url = value.strip()
+                            elif key.strip() == 'CLASH_API_SECRET':
+                                secret = value.strip()
+
+            # 检查 API 是否可用
+            headers = {}
+            if secret:
+                headers['Authorization'] = f'Bearer {secret}'
+
+            response = requests.get(f"{api_url}/proxies", headers=headers, timeout=3)
+            response.raise_for_status()
+
+            # 检查是否有节点
+            proxies = response.json().get('proxies', {})
+            nodes = {
+                name: info for name, info in proxies.items()
+                if 'all' not in info and name not in ['DIRECT', 'REJECT', 'GLOBAL']
+            }
+
+            return len(nodes) > 0
+
+        except:
+            # 如果无法连接或检查失败，假定配置存在（向后兼容）
+            return True
+
+    def restart_clash(self, skip_check: bool = False):
         """重启 Clash 服务"""
+        # 检查 Clash 是否有可用配置（除非明确跳过检查）
+        if not skip_check:
+            if not self.check_clash_config():
+                print(f"\n{Colors.YELLOW}⚠ Clash 当前没有加载任何配置，取消重启操作{Colors.NC}")
+                print(f"{Colors.YELLOW}  提示: 请在 Clash Verge 中启用订阅配置{Colors.NC}")
+                print(f"{Colors.YELLOW}  或者先更新订阅: ./clash-sub update <name>{Colors.NC}")
+                return False
+
         print(f"\n{Colors.YELLOW}正在重启 Clash 服务...{Colors.NC}")
 
         commands = [
@@ -342,13 +548,11 @@ def main():
 
         elif args.command == 'update':
             success = manager.update_subscription(args.name)
-            if success and manager.config.get('auto_restart', True):
-                manager.restart_clash()
+            # 不自动重启，让用户在 Clash Verge 中手动应用配置
 
         elif args.command == 'update-all':
             manager.update_all()
-            if manager.config.get('auto_restart', True):
-                manager.restart_clash()
+            # 不自动重启，让用户在 Clash Verge 中手动应用配置
 
         elif args.command == 'add':
             manager.add_subscription(args.name, args.url, args.description)
