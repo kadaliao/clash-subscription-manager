@@ -1,11 +1,11 @@
 # Clash 订阅管理器
 
-用于管理 Clash Verge 代理订阅配置和快速切换节点的命令行工具。
+用于管理 Clash Party (mihomo-party) 代理订阅配置和快速切换节点的命令行工具。
 
 ## 特性
 
 - **订阅管理** - 更新订阅、自动备份、添加/删除订阅
-- **自动同步** - 自动更新 Clash Verge 配置并重新加载，无需手动操作
+- **自动同步** - 自动更新 Clash Party 配置并重新加载，无需手动操作
 - **配置验证** - 自动验证配置格式，确保下载的是 Clash 格式
 - **节点管理** - 查看节点、延迟测试、快速切换
 
@@ -33,7 +33,8 @@ cp config.json.sample config.json
 配置示例：
 ```json
 {
-  "clash_dir": "~/.config/clash",
+  "work_dir": "~/.clash-sub-manager",
+  "clash_party_dir": "~/Library/Application Support/mihomo-party",
   "subscriptions": {
     "my-proxy": {
       "url": "https://your-subscription-url",
@@ -49,7 +50,11 @@ cp config.json.sample config.json
 }
 ```
 
-> **重要：** 订阅 URL 需要与 Clash Verge 中添加的订阅 URL **完全一致**，这样工具才能自动同步配置
+> **重要：**
+> - `work_dir`: 脚本的工作目录，用于存放下载的配置文件和备份
+> - `clash_party_dir`: Clash Party 的配置目录
+> - 订阅 URL 需要与 Clash Party 中添加的订阅 URL **完全一致**
+> - 脚本会自动通过 URL 匹配找到对应的 profile ID
 
 ### 3. 配置 Clash API
 
@@ -63,12 +68,12 @@ EOF
 ```
 
 **如何获取 API 配置：**
-1. 打开 Clash Verge 应用
-2. 进入「设置」→「Clash 内核」
+1. 打开 Clash Party 应用
+2. 进入「设置」→「外部控制」
 3. 查看「外部控制器」的地址和端口（通常是 `127.0.0.1:9090`）
 4. 查看「Secret」密钥并填入上面的配置文件
 
-> **注意：** 配置 API 后，更新订阅会自动同步到 Clash Verge 并重新加载配置
+> **注意：** 配置 API 后，更新订阅会自动同步到 Clash Party 并重新加载配置
 
 ## 使用方法
 
@@ -87,10 +92,11 @@ EOF
 **工作流程：**
 
 执行 `./clash-sub update <name>` 时会自动：
-1. 下载订阅配置并验证格式
+1. 下载订阅配置到工作目录并验证格式
 2. 备份旧配置（保留最近 5 个版本）
-3. 更新 Clash Verge 的配置文件
-4. 通过 API 重新加载配置
+3. 通过 URL 自动匹配 Clash Party 中的订阅配置
+4. 更新 Clash Party 的 `profiles/<profile_id>.yaml` 文件
+5. 通过 API 重新加载配置
 
 全程无需手动操作！
 
@@ -164,13 +170,13 @@ $ ./clash-proxy current
 
 ### 更新后节点仍然超时
 - 确保已配置 `.clash-api-config` 文件
-- 检查 Clash Verge 的外部控制器是否已启用
+- 检查 Clash Party 的外部控制器是否已启用
 - 查看更新日志中是否显示"✓ 已通过 API 重新加载配置"
 
-### 未找到 Clash Verge 配置
-- 确保使用的是 Clash Verge 而不是其他 Clash 客户端
-- 订阅 URL 需要与 Clash Verge 中添加的订阅 URL 完全一致
-- 如果手动修改过 config.json 中的 URL，需要在 Clash Verge 中也同步修改
+### 未找到 Clash Party 配置
+- 确保使用的是 Clash Party 而不是其他 Clash 客户端
+- 订阅 URL 需要与 Clash Party 中添加的订阅 URL 完全一致
+- 可以在 Clash Party 的订阅列表中查看已添加的订阅 URL
 
 ## 许可证
 

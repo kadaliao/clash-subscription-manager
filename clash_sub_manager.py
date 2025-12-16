@@ -34,7 +34,17 @@ class ClashSubscriptionManager:
     def __init__(self, config_path: str = "config.json"):
         self.config_path = Path(config_path)
         self.config = self.load_config()
-        self.clash_dir = Path(os.path.expanduser(self.config['clash_dir']))
+
+        # 兼容旧配置：如果有 clash_dir 就用 clash_dir，否则用 work_dir
+        if 'clash_dir' in self.config:
+            self.work_dir = Path(os.path.expanduser(self.config['clash_dir']))
+            self.clash_party_dir = Path(os.path.expanduser(self.config.get('clash_party_dir', self.config['clash_dir'])))
+        else:
+            self.work_dir = Path(os.path.expanduser(self.config.get('work_dir', '~/.clash-sub-manager')))
+            self.clash_party_dir = Path(os.path.expanduser(self.config['clash_party_dir']))
+
+        # 确保工作目录存在
+        self.work_dir.mkdir(parents=True, exist_ok=True)
 
     def load_config(self) -> Dict:
         """加载配置文件"""
@@ -73,7 +83,7 @@ class ClashSubscriptionManager:
             print(f"   URL: {sub['url'][:50]}...")
 
             # 检查配置文件是否存在
-            config_file = self.clash_dir / f"{name}.yaml"
+            config_file = self.work_dir / f"{name}.yaml"
             if config_file.exists():
                 size = config_file.stat().st_size / 1024  # KB
                 mtime = datetime.fromtimestamp(config_file.stat().st_mtime)
@@ -88,12 +98,12 @@ class ClashSubscriptionManager:
         if not self.config['backup']['enabled']:
             return None
 
-        config_file = self.clash_dir / f"{config_name}.yaml"
+        config_file = self.work_dir / f"{config_name}.yaml"
         if not config_file.exists():
             return None
 
         # 创建备份目录
-        backup_dir = self.clash_dir / "backups"
+        backup_dir = self.work_dir / "backups"
         backup_dir.mkdir(exist_ok=True)
 
         # 生成备份文件名
@@ -112,7 +122,7 @@ class ClashSubscriptionManager:
     def cleanup_old_backups(self, config_name: str):
         """清理旧备份文件"""
         max_backups = self.config['backup'].get('max_backups', 5)
-        backup_dir = self.clash_dir / "backups"
+        backup_dir = self.work_dir / "backups"
 
         if not backup_dir.exists():
             return
@@ -148,9 +158,9 @@ class ClashSubscriptionManager:
         # 备份当前配置
         self.backup_config(name)
 
-        # 下载新配置
+        # 下载新配置到工作目录
         print(f"{Colors.YELLOW}正在下载配置...{Colors.NC}")
-        config_file = self.clash_dir / f"{name}.yaml"
+        config_file = self.work_dir / f"{name}.yaml"
         temp_file = config_file.with_suffix('.yaml.tmp')
 
         try:
@@ -255,58 +265,59 @@ class ClashSubscriptionManager:
         print(f"{Colors.GREEN}✓ 更新完成: {success_count}/{len(enabled_subs)}{Colors.NC}")
         print(f"{Colors.CYAN}{'='*60}{Colors.NC}\n")
 
-    def update_clash_verge_profile(self, config_file: Path, sub_url: str) -> bool:
-        """更新 Clash Verge 的配置文件"""
+    def update_clash_party_profile(self, config_file: Path, sub_url: str) -> bool:
+        """更新 Clash Party (mihomo-party) 的配置文件"""
         try:
-            # Clash Verge 配置目录
-            verge_dir = Path.home() / "Library/Application Support/io.github.clash-verge-rev.clash-verge-rev"
-            profiles_yaml = verge_dir / "profiles.yaml"
+            profile_yaml = self.clash_party_dir / "profile.yaml"
 
-            if not profiles_yaml.exists():
-                print(f"{Colors.YELLOW}⚠ 未找到 Clash Verge 配置，使用传统方式{Colors.NC}")
+            if not profile_yaml.exists():
+                print(f"{Colors.YELLOW}⚠ 未找到 Clash Party 配置{Colors.NC}")
                 return False
 
-            # 读取 profiles.yaml
-            with open(profiles_yaml, 'r', encoding='utf-8') as f:
-                profiles_data = yaml.safe_load(f)
+            # 读取 profile.yaml
+            with open(profile_yaml, 'r', encoding='utf-8') as f:
+                profile_data = yaml.safe_load(f)
 
             # 查找匹配的配置
-            profile_uid = None
-            for item in profiles_data.get('items', []):
+            matched_profile = None
+            for item in profile_data.get('items', []):
                 if item.get('url') == sub_url:
-                    profile_uid = item['uid']
+                    matched_profile = item
                     break
 
-            if not profile_uid:
-                print(f"{Colors.YELLOW}⚠ 未在 Clash Verge 中找到此订阅{Colors.NC}")
+            if not matched_profile:
+                print(f"{Colors.YELLOW}⚠ 未在 Clash Party 中找到此订阅{Colors.NC}")
+                print(f"{Colors.YELLOW}  提示: 请先在 Clash Party 中添加 URL 为 {sub_url} 的订阅{Colors.NC}")
                 return False
 
-            # 复制配置文件到 Clash Verge
-            verge_profile = verge_dir / "profiles" / f"{profile_uid}.yaml"
-            shutil.copy2(config_file, verge_profile)
+            profile_uid = matched_profile['id']
+
+            # 复制配置文件到 Clash Party
+            party_profile = self.clash_party_dir / "profiles" / f"{profile_uid}.yaml"
+            shutil.copy2(config_file, party_profile)
 
             # 更新时间戳
             import time
-            for item in profiles_data['items']:
-                if item['uid'] == profile_uid:
-                    item['updated'] = int(time.time())
+            for item in profile_data['items']:
+                if item['id'] == profile_uid:
+                    item['updated'] = int(time.time() * 1000)  # Clash Party 使用毫秒时间戳
                     break
 
-            # 保存 profiles.yaml
-            with open(profiles_yaml, 'w', encoding='utf-8') as f:
-                yaml.dump(profiles_data, f, allow_unicode=True, default_flow_style=False)
+            # 保存 profile.yaml
+            with open(profile_yaml, 'w', encoding='utf-8') as f:
+                yaml.dump(profile_data, f, allow_unicode=True, default_flow_style=False)
 
-            print(f"{Colors.GREEN}✓ 已更新 Clash Verge 配置文件{Colors.NC}")
+            print(f"{Colors.GREEN}✓ 已更新 Clash Party 配置文件{Colors.NC}")
 
             # 如果是当前使用的配置，尝试重新加载
-            if profiles_data.get('current') == profile_uid:
+            if profile_data.get('current') == profile_uid:
                 return self.reload_clash_core()
             else:
-                print(f"{Colors.YELLOW}  提示: 该配置未激活，请在 Clash Verge 中切换使用{Colors.NC}")
+                print(f"{Colors.YELLOW}  提示: 该配置未激活，请在 Clash Party 中切换使用{Colors.NC}")
                 return True
 
         except Exception as e:
-            print(f"{Colors.YELLOW}⚠ 更新 Clash Verge 配置失败: {e}{Colors.NC}")
+            print(f"{Colors.YELLOW}⚠ 更新 Clash Party 配置失败: {e}{Colors.NC}")
             return False
 
     def reload_clash_core(self) -> bool:
@@ -360,7 +371,7 @@ class ClashSubscriptionManager:
 
         except Exception as e:
             print(f"{Colors.YELLOW}⚠ 无法通过 API 重新加载: {e}{Colors.NC}")
-            print(f"{Colors.YELLOW}  提示: 配置已更新，在 Clash Verge 中点击「刷新」按钮即可{Colors.NC}")
+            print(f"{Colors.YELLOW}  提示: 配置已更新，在 Clash Party 中点击「刷新」按钮即可{Colors.NC}")
             return False
 
     def reload_clash_config(self, config_file: Path) -> bool:
@@ -368,15 +379,15 @@ class ClashSubscriptionManager:
         # 获取订阅 URL
         sub_url = None
         for name, sub in self.config['subscriptions'].items():
-            if self.clash_dir / f"{name}.yaml" == config_file:
+            if self.work_dir / f"{name}.yaml" == config_file:
                 sub_url = sub['url']
                 break
 
         if not sub_url:
             return False
 
-        # 尝试更新 Clash Verge 配置
-        return self.update_clash_verge_profile(config_file, sub_url)
+        # 尝试更新 Clash Party 配置
+        return self.update_clash_party_profile(config_file, sub_url)
 
     def check_clash_config(self) -> bool:
         """检查 Clash 是否有可用的配置"""
@@ -426,28 +437,28 @@ class ClashSubscriptionManager:
         if not skip_check:
             if not self.check_clash_config():
                 print(f"\n{Colors.YELLOW}⚠ Clash 当前没有加载任何配置，取消重启操作{Colors.NC}")
-                print(f"{Colors.YELLOW}  提示: 请在 Clash Verge 中启用订阅配置{Colors.NC}")
+                print(f"{Colors.YELLOW}  提示: 请在 Clash Party 中启用订阅配置{Colors.NC}")
                 print(f"{Colors.YELLOW}  或者先更新订阅: ./clash-sub update <name>{Colors.NC}")
                 return False
 
-        print(f"\n{Colors.YELLOW}正在重启 Clash 服务...{Colors.NC}")
+        print(f"\n{Colors.YELLOW}正在重启 Clash Party 服务...{Colors.NC}")
 
         commands = [
-            ["sudo", "launchctl", "kickstart", "-k", "system/io.github.clash-verge-rev.clash-verge-rev.service"],
+            ["pkill", "-HUP", "mihomo"],
             ["pkill", "-HUP", "clash"],
         ]
 
         for cmd in commands:
             try:
                 subprocess.run(cmd, check=True, capture_output=True)
-                print(f"{Colors.GREEN}✓ Clash 服务已重启{Colors.NC}")
+                print(f"{Colors.GREEN}✓ Clash Party 服务已重启{Colors.NC}")
                 return True
             except subprocess.CalledProcessError:
                 continue
             except FileNotFoundError:
                 continue
 
-        print(f"{Colors.YELLOW}⚠ 无法自动重启，请手动重启 Clash 应用{Colors.NC}")
+        print(f"{Colors.YELLOW}⚠ 无法自动重启，请手动重启 Clash Party 应用{Colors.NC}")
         return False
 
     def add_subscription(self, name: str, url: str, description: str = ""):

@@ -1,10 +1,11 @@
 {
-  "clash_dir": "~/.config/clash",
+  "work_dir": "~/.clash-sub-manager",
+  "clash_party_dir": "~/Library/Application Support/mihomo-party",
   "subscriptions": {
-    "x-superflash": {
-      "url": "订阅地址",
+    "example-subscription": {
+      "url": "https://your-subscription-url",
       "enabled": true,
-      "description": "订阅名称"
+      "description": "示例订阅"
     }
   },
   "backup": {
