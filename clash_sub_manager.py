@@ -32,8 +32,16 @@ class Colors:
 class ClashSubscriptionManager:
     """Clash 订阅管理器"""
 
+    API_CONFIG_FILE_NAME = ".clash-api-config"
+    DEFAULT_API_URL = "http://127.0.0.1:9090"
+    DEFAULT_API_SECRET = ""
+
     def __init__(self, config_path: str = "config.json"):
         self.config_path = Path(config_path)
+        self.api_config_file = Path(__file__).parent / self.API_CONFIG_FILE_NAME
+        self.default_api_url = self.DEFAULT_API_URL
+        self.default_api_secret = self.DEFAULT_API_SECRET
+
         self.config = self.load_config()
 
         # 兼容旧配置：如果有 clash_dir 就用 clash_dir，否则用 work_dir
@@ -49,9 +57,9 @@ class ClashSubscriptionManager:
 
     def load_api_config(self) -> Tuple[str, str]:
         """读取 Clash API 配置，提供统一的默认值和错误处理"""
-        api_config_file = Path(__file__).parent / ".clash-api-config"
-        api_url = "http://127.0.0.1:9090"
-        secret = ""
+        api_config_file = self.api_config_file
+        api_url = self.default_api_url
+        secret = self.default_api_secret
 
         if not api_config_file.exists():
             return api_url, secret
@@ -68,7 +76,7 @@ class ClashSubscriptionManager:
                             api_url = value.strip()
                         elif key.strip() == 'CLASH_API_SECRET':
                             secret = value.strip()
-        except Exception as e:
+        except (OSError, UnicodeError, yaml.YAMLError) as e:
             print(f"{Colors.YELLOW}⚠ 无法读取 API 配置: {e}{Colors.NC}")
 
         return api_url, secret
