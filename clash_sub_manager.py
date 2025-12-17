@@ -4,15 +4,16 @@ Clash 订阅管理器
 方便管理和更新 Clash 订阅配置
 """
 
+import argparse
 import json
 import os
-import sys
-import subprocess
 import shutil
-from pathlib import Path
+import subprocess
+import sys
 from datetime import datetime
-from typing import Dict, Optional
-import argparse
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
 import requests
 import yaml
 
@@ -45,6 +46,32 @@ class ClashSubscriptionManager:
 
         # 确保工作目录存在
         self.work_dir.mkdir(parents=True, exist_ok=True)
+
+    def load_api_config(self) -> Tuple[str, str]:
+        """读取 Clash API 配置，提供统一的默认值和错误处理"""
+        api_config_file = Path(__file__).parent / ".clash-api-config"
+        api_url = "http://127.0.0.1:9090"
+        secret = ""
+
+        if not api_config_file.exists():
+            return api_url, secret
+
+        try:
+            with open(api_config_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        if key.strip() == 'CLASH_API_URL':
+                            api_url = value.strip()
+                        elif key.strip() == 'CLASH_API_SECRET':
+                            secret = value.strip()
+        except Exception as e:
+            print(f"{Colors.YELLOW}⚠ 无法读取 API 配置: {e}{Colors.NC}")
+
+        return api_url, secret
 
     def load_config(self) -> Dict:
         """加载配置文件"""
@@ -323,23 +350,7 @@ class ClashSubscriptionManager:
     def reload_clash_core(self) -> bool:
         """通过 API 重新加载 Clash 核心"""
         try:
-            # 读取 API 配置
-            api_config_file = Path(__file__).parent / ".clash-api-config"
-            api_url = "http://127.0.0.1:9090"
-            secret = ""
-
-            if api_config_file.exists():
-                with open(api_config_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or line.startswith('#'):
-                            continue
-                        if '=' in line:
-                            key, value = line.split('=', 1)
-                            if key.strip() == 'CLASH_API_URL':
-                                api_url = value.strip()
-                            elif key.strip() == 'CLASH_API_SECRET':
-                                secret = value.strip()
+            api_url, secret = self.load_api_config()
 
             # 设置请求头
             headers = {}
@@ -392,23 +403,7 @@ class ClashSubscriptionManager:
     def check_clash_config(self) -> bool:
         """检查 Clash 是否有可用的配置"""
         try:
-            # 尝试读取 API 配置
-            api_config_file = Path(__file__).parent / ".clash-api-config"
-            api_url = "http://127.0.0.1:9090"
-            secret = ""
-
-            if api_config_file.exists():
-                with open(api_config_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line or line.startswith('#'):
-                            continue
-                        if '=' in line:
-                            key, value = line.split('=', 1)
-                            if key.strip() == 'CLASH_API_URL':
-                                api_url = value.strip()
-                            elif key.strip() == 'CLASH_API_SECRET':
-                                secret = value.strip()
+            api_url, secret = self.load_api_config()
 
             # 检查 API 是否可用
             headers = {}
