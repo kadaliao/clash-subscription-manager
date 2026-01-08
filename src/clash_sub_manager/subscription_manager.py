@@ -380,19 +380,25 @@ class ClashSubscriptionManager:
         print(f"{Colors.YELLOW}⚠ 无法自动重启，请手动重启 Clash Party 应用{Colors.NC}")
         return False
 
-    def import_api_config_from_file(self, path: Optional[str | Path] = None) -> bool:
-        """Import API credentials from a .clash-api-config style file."""
-        target = Path(path).expanduser() if path else self.api_config_path
-        if not target.exists():
-            print(f"{Colors.RED}✗ 未找到 API 配置文件: {target}{Colors.NC}")
+    def write_api_config_file(self, path: Optional[str | Path] = None) -> bool:
+        """Write API credentials from config.json to a .clash-api-config file."""
+        api_cfg = self.config.get("api") or {}
+        url = api_cfg.get("url")
+        secret = api_cfg.get("secret", "")
+
+        if not url:
+            print(f"{Colors.RED}✗ config.json 中缺少 api.url，请先编辑配置或运行 clash-sub init-config{Colors.NC}")
             return False
 
-        url, secret = load_api_config(target)
-        self.config.setdefault("api", {})
-        self.config["api"]["url"] = url
-        self.config["api"]["secret"] = secret
-        self.save_config()
-        print(f"{Colors.GREEN}✓ 已导入 API 配置并保存到 config.json{Colors.NC}")
+        target = Path(path).expanduser() if path else self.api_config_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        content = [
+            f"CLASH_API_URL={url}",
+            f"CLASH_API_SECRET={secret}",
+        ]
+        target.write_text("\n".join(content) + "\n", encoding="utf-8")
+        print(f"{Colors.GREEN}✓ 已写入 API 配置文件: {target}{Colors.NC}")
         return True
 
     def _sanitize_name(self, name: str) -> str:

@@ -220,4 +220,4 @@ MIT License
 ### 导入现有配置
 
 - `clash-sub import-party` 会读取 Clash Party 的 `profile.yaml`，把其中的订阅 URL 直接写入 `config.json`。可使用 `--overwrite` 覆盖同名订阅，或 `--prefix` 为导入的订阅名称统一加前缀。
-- `clash-sub import-api` 将 `.clash-api-config`（或 `--path` 指定的文件）中的 API 地址与密钥写入 `config.json` 的 `api` 字段，方便集中管理。导入完成后可视情况删除原 `.clash-api-config` 文件。
+- `clash-sub import-api` 会根据 `config.json` 中的 `api` 字段生成（或覆盖） `.clash-api-config` 文件，便于兼容其他工具。可使用 `--path` 指定输出位置。
