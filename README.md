@@ -9,25 +9,36 @@
 - **配置验证** - 自动验证配置格式，确保下载的是 Clash 格式
 - **节点管理** - 查看节点、延迟测试、快速切换
 
-## 快速开始
+## 安装
 
-### 1. 安装依赖
+### 方式一：通过 pip 安装（推荐）
 
 ```bash
-# 安装 uv（如未安装）
-brew install uv
+pip install clash-subscription-manager
+```
 
-# 克隆项目并安装依赖
+安装完成后会自动提供两个命令：
+
+- `clash-sub` - 订阅管理器
+- `clash-proxy` - 节点查看/切换工具
+
+### 方式二：本地开发
+
+```bash
 git clone <repository-url>
 cd clash-subscription-manager
 uv sync
 ```
 
-### 2. 配置订阅
+开发模式下建议通过 `uv run python -m clash_sub_manager.cli --help` / `uv run python -m clash_sub_manager.proxy_cli --help` 运行，也可以直接使用 `python -m clash_sub_manager.*`。
+
+## 快速开始
+
+### 1. 初始化配置
 
 ```bash
-cp config.json.sample config.json
-# 编辑 config.json，填入订阅 URL
+clash-sub init-config --path ~/.config/clash-sub-manager/config.json
+# 然后编辑配置文件，填入订阅与 Clash Party 路径
 ```
 
 配置示例：
@@ -56,12 +67,12 @@ cp config.json.sample config.json
 > - 订阅 URL 需要与 Clash Party 中添加的订阅 URL **完全一致**
 > - 脚本会自动通过 URL 匹配找到对应的 profile ID
 
-### 3. 配置 Clash API
+### 2. 配置 Clash API
 
-用于自动重新加载配置和节点管理功能：
+用于自动重新加载配置和节点管理功能，工具默认从 `~/.config/clash-sub-manager/.clash-api-config` 读取，可以通过 `--api-config` 指定其他路径。
 
 ```bash
-cat > .clash-api-config << 'EOF'
+cat > ~/.config/clash-sub-manager/.clash-api-config <<'EOF'
 CLASH_API_URL=http://127.0.0.1:9090
 CLASH_API_SECRET=your-secret-here
 EOF
@@ -77,16 +88,19 @@ EOF
 
 ## 使用方法
 
+所有命令都支持 `--config` 与 `--api-config` 参数来覆盖默认路径，方便在不同机器或 CI 环境中使用。
+
 ### 订阅管理 (clash-sub)
 
 ```bash
-./clash-sub list                           # 查看所有订阅
-./clash-sub update <name>                  # 更新指定订阅（自动同步）
-./clash-sub update-all                     # 更新所有订阅（自动同步）
-./clash-sub add <name> <url> [desc]        # 添加订阅
-./clash-sub remove <name>                  # 删除订阅
-./clash-sub toggle <name>                  # 启用/禁用订阅
-./clash-sub restart                        # 重启 Clash 服务
+clash-sub list                           # 查看所有订阅
+clash-sub update <name>                  # 更新指定订阅（自动同步）
+clash-sub update-all                     # 更新所有订阅（自动同步）
+clash-sub add <name> <url> [desc]        # 添加订阅
+clash-sub remove <name>                  # 删除订阅
+clash-sub toggle <name>                  # 启用/禁用订阅
+clash-sub restart                        # 重启 Clash 服务
+clash-sub init-config                    # 快速生成配置模板
 ```
 
 **工作流程：**
@@ -103,18 +117,18 @@ EOF
 ### 节点管理 (clash-proxy)
 
 ```bash
-./clash-proxy groups                       # 查看策略组
-./clash-proxy nodes                        # 查看所有节点
-./clash-proxy current                      # 查看当前选择
-./clash-proxy test                         # 测试节点延迟
-./clash-proxy switch <group> <node>        # 切换节点
+clash-proxy groups                       # 查看策略组
+clash-proxy nodes                        # 查看所有节点
+clash-proxy current                      # 查看当前选择
+clash-proxy test                         # 测试节点延迟
+clash-proxy switch <group> <node>        # 切换节点
 ```
 
 ## 使用建议
 
 ### 设置别名
 
-在 `~/.zshrc` 或 `~/.bashrc` 添加：
+如果选择本地开发模式，可在 `~/.zshrc` 或 `~/.bashrc` 添加：
 
 ```bash
 export PATH="/path/to/clash-subscription-manager:$PATH"
@@ -124,7 +138,7 @@ export PATH="/path/to/clash-subscription-manager:$PATH"
 
 ```bash
 # 添加 cron 任务（每天凌晨 3 点更新）
-0 3 * * * /path/to/clash-subscription-manager/clash-sub update-all
+0 3 * * * clash-sub update-all
 ```
 
 ## 使用示例
