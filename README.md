@@ -37,9 +37,9 @@ uv sync
 无需提前安装，可使用 `uvx`（uv >= 0.4）直接执行：
 
 ```bash
-uvx clash-subscription-manager clash-sub --help
-uvx clash-subscription-manager clash-sub init-config
-uvx clash-subscription-manager clash-proxy groups
+uvx --from clash-subscription-manager clash-sub --help
+uvx --from clash-subscription-manager clash-sub init-config
+uvx --from clash-subscription-manager clash-proxy groups
 ```
 
 `uvx` 会自动拉取并缓存依赖，适合一次性使用或 CI/CD 脚本。
