@@ -18,6 +18,7 @@ DEFAULT_WORK_DIR = DEFAULT_CONFIG_DIR
 DEFAULT_API_CONFIG_STR = f"{DEFAULT_CONFIG_DIR_STR}/{API_CONFIG_FILENAME}"
 DEFAULT_API_URL = "http://127.0.0.1:9090"
 DEFAULT_API_SECRET = ""
+SAMPLE_API_CONFIG = {"url": DEFAULT_API_URL, "secret": ""}
 COMMON_PARTY_DIRS = [
     "~/Library/Application Support/mihomo-party",
     "~/Library/Application Support/Clash Verge/mihomo-party",
@@ -121,8 +122,12 @@ def write_sample_config(
 
     data = json.loads(get_sample_config_text())
     overrides = overrides or {}
-    data.update({k: v for k, v in overrides.items() if v})
+    for key, value in overrides.items():
+        if value is None:
+            continue
+        data[key] = value
 
+    data.setdefault("api", SAMPLE_API_CONFIG.copy())
     target.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return target
 

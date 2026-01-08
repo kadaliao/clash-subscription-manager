@@ -12,5 +12,9 @@
     "enabled": true,
     "max_backups": 5
   },
+  "api": {
+    "url": "http://127.0.0.1:9090",
+    "secret": ""
+  },
   "auto_restart": true
 }

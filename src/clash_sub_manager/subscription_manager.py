@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -62,7 +63,17 @@ class ClashSubscriptionManager:
 
         data.setdefault("subscriptions", {})
         data.setdefault("backup", {"enabled": True, "max_backups": 5})
+        data.setdefault("api", {})
         return data
+
+    def get_api_credentials(self) -> tuple[str, str]:
+        api_cfg = self.config.get("api", {}) or {}
+        cfg_url = api_cfg.get("url")
+        cfg_secret = api_cfg.get("secret")
+        file_url, file_secret = load_api_config(self.api_config_path)
+        api_url = cfg_url if cfg_url not in (None, "") else file_url
+        secret = cfg_secret if cfg_secret is not None else file_secret
+        return api_url, secret
 
     def save_config(self) -> None:
         """Persist the config file."""
@@ -302,7 +313,7 @@ class ClashSubscriptionManager:
     def reload_clash_core(self) -> bool:
         """Trigger Clash to reload configuration via API."""
         try:
-            api_url, secret = load_api_config(self.api_config_path)
+            api_url, secret = self.get_api_credentials()
             headers = {"Authorization": f"Bearer {secret}"} if secret else {}
 
             response = requests.post(f"{api_url}/configs/reload", headers=headers, timeout=5)
@@ -330,7 +341,7 @@ class ClashSubscriptionManager:
     def check_clash_config(self) -> bool:
         """Ensure Clash currently exposes proxies before restarting."""
         try:
-            api_url, secret = load_api_config(self.api_config_path)
+            api_url, secret = self.get_api_credentials()
             headers = {"Authorization": f"Bearer {secret}"} if secret else {}
 
             response = requests.get(f"{api_url}/proxies", headers=headers, timeout=3)
@@ -368,6 +379,82 @@ class ClashSubscriptionManager:
 
         print(f"{Colors.YELLOW}⚠ 无法自动重启，请手动重启 Clash Party 应用{Colors.NC}")
         return False
+
+    def import_api_config_from_file(self, path: Optional[str | Path] = None) -> bool:
+        """Import API credentials from a .clash-api-config style file."""
+        target = Path(path).expanduser() if path else self.api_config_path
+        if not target.exists():
+            print(f"{Colors.RED}✗ 未找到 API 配置文件: {target}{Colors.NC}")
+            return False
+
+        url, secret = load_api_config(target)
+        self.config.setdefault("api", {})
+        self.config["api"]["url"] = url
+        self.config["api"]["secret"] = secret
+        self.save_config()
+        print(f"{Colors.GREEN}✓ 已导入 API 配置并保存到 config.json{Colors.NC}")
+        return True
+
+    def _sanitize_name(self, name: str) -> str:
+        slug = re.sub(r"[^\w-]+", "-", name.strip())
+        slug = slug.strip("-")
+        return slug or "subscription"
+
+    def import_subscriptions_from_party(self, overwrite: bool = False, prefix: str = "") -> bool:
+        """Import subscriptions listed in Clash Party profile.yaml."""
+        profile_yaml = self.clash_party_dir / "profile.yaml"
+        if not profile_yaml.exists():
+            print(f"{Colors.RED}✗ 未找到 Clash Party 配置文件: {profile_yaml}{Colors.NC}")
+            return False
+
+        try:
+            with open(profile_yaml, "r", encoding="utf-8") as handle:
+                profile_data = yaml.safe_load(handle) or {}
+        except yaml.YAMLError as exc:
+            print(f"{Colors.RED}✗ 解析 Clash Party 配置失败: {exc}{Colors.NC}")
+            return False
+
+        items = profile_data.get("items", [])
+        if not items:
+            print(f"{Colors.YELLOW}⚠ Clash Party 配置中没有订阅项{Colors.NC}")
+            return False
+
+        subscriptions = self.config.setdefault("subscriptions", {})
+        imported = 0
+        skipped = 0
+
+        for item in items:
+            url = item.get("url")
+            if not url:
+                continue
+            name_source = item.get("name") or item.get("title") or item.get("id") or "subscription"
+            safe_name = self._sanitize_name(name_source)
+            if prefix:
+                safe_name = f"{prefix}{safe_name}"
+
+            if safe_name in subscriptions and not overwrite:
+                base = safe_name
+                counter = 2
+                while safe_name in subscriptions:
+                    safe_name = f"{base}-{counter}"
+                    counter += 1
+            elif safe_name in subscriptions and overwrite:
+                pass
+
+            subscriptions[safe_name] = {
+                "url": url,
+                "enabled": item.get("enabled", True),
+                "description": item.get("description") or item.get("remarks") or name_source,
+            }
+            imported += 1
+
+        if not imported:
+            print(f"{Colors.YELLOW}⚠ 未导入任何订阅，可能所有订阅都已存在{Colors.NC}")
+            return False
+
+        self.save_config()
+        print(f"{Colors.GREEN}✓ 已导入 {imported} 个订阅{Colors.NC}")
+        return True
 
     def add_subscription(self, name: str, url: str, description: str = "") -> None:
         """Add a new subscription to config."""

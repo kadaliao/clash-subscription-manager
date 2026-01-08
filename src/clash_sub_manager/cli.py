@@ -71,6 +71,13 @@ def build_parser(config_display: str, api_display: str) -> argparse.ArgumentPars
     init_parser.add_argument("--path", help="输出配置路径 (默认: ~/.config/clash-sub-manager/config.json)")
     init_parser.add_argument("--overwrite", action="store_true", help="覆盖已有文件")
 
+    import_api_parser = subparsers.add_parser("import-api", help="从 .clash-api-config 导入 API 配置")
+    import_api_parser.add_argument("--path", help="API 配置文件路径 (默认: ~/.config/clash-sub-manager/.clash-api-config)")
+
+    import_party_parser = subparsers.add_parser("import-party", help="从 Clash Party 导入订阅")
+    import_party_parser.add_argument("--overwrite", action="store_true", help="覆盖同名订阅")
+    import_party_parser.add_argument("--prefix", default="", help="为导入的订阅名称添加前缀")
+
     return parser
 
 
@@ -155,6 +162,10 @@ def main(argv: list[str] | None = None) -> int:
             manager.toggle_subscription(args.name)
         elif args.command == "restart":
             manager.restart_clash(skip_check=args.skip_check)
+        elif args.command == "import-api":
+            manager.import_api_config_from_file(args.path)
+        elif args.command == "import-party":
+            manager.import_subscriptions_from_party(overwrite=args.overwrite, prefix=args.prefix or "")
     except KeyboardInterrupt:
         print(f"\n{Colors.YELLOW}操作已取消{Colors.NC}")
         return 1

@@ -72,6 +72,10 @@ clash-sub init-config
     "enabled": true,
     "max_backups": 5
   },
+  "api": {
+    "url": "http://127.0.0.1:9090",
+    "secret": ""
+  },
   "auto_restart": true
 }
 ```
@@ -79,6 +83,7 @@ clash-sub init-config
 > **重要：**
 > - `work_dir`: 脚本的工作目录（默认与 `config.json` 同目录）
 > - `clash_party_dir`: Clash Party 的配置目录（`clash-sub init-config` 会尝试自动检测）
+> - `api.url` / `api.secret`: Clash HTTP API 地址与密钥（可运行 `clash-sub import-api` 从 `.clash-api-config` 导入）
 > - 订阅 URL 需要与 Clash Party 中添加的订阅 URL **完全一致**
 > - 脚本会自动通过 URL 匹配找到对应的 profile ID
 
@@ -115,6 +120,8 @@ clash-sub add <name> <url> [desc]        # 添加订阅
 clash-sub remove <name>                  # 删除订阅
 clash-sub toggle <name>                  # 启用/禁用订阅
 clash-sub restart                        # 重启 Clash 服务
+clash-sub import-party [--overwrite]     # 从 Clash Party 导入订阅
+clash-sub import-api [--path FILE]       # 从 .clash-api-config 导入 API 配置
 clash-sub init-config                    # 快速生成配置模板
 ```
 
@@ -210,3 +217,7 @@ $ ./clash-proxy current
 ## 许可证
 
 MIT License
+### 导入现有配置
+
+- `clash-sub import-party` 会读取 Clash Party 的 `profile.yaml`，把其中的订阅 URL 直接写入 `config.json`。可使用 `--overwrite` 覆盖同名订阅，或 `--prefix` 为导入的订阅名称统一加前缀。
+- `clash-sub import-api` 将 `.clash-api-config`（或 `--path` 指定的文件）中的 API 地址与密钥写入 `config.json` 的 `api` 字段，方便集中管理。导入完成后可视情况删除原 `.clash-api-config` 文件。
