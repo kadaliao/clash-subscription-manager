@@ -6,7 +6,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import resolve_api_config_path, resolve_config_path, write_sample_config
+from .config import (
+    default_config_path,
+    resolve_api_config_path,
+    resolve_config_path,
+    write_sample_config,
+)
 from .console import Colors
 from .subscription_manager import ClashSubscriptionManager
 
@@ -24,11 +29,15 @@ def build_parser(default_config: Path, default_api_config: Path) -> argparse.Arg
         """,
     )
 
-    parser.add_argument("--config", default=str(default_config), help="配置文件路径")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help=f"配置文件路径 (默认: {default_config})",
+    )
     parser.add_argument(
         "--api-config",
-        default=str(default_api_config),
-        help="Clash API 配置文件 (.clash-api-config)",
+        default=None,
+        help=f"Clash API 配置文件 (.clash-api-config) (默认: {default_api_config})",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -55,7 +64,7 @@ def build_parser(default_config: Path, default_api_config: Path) -> argparse.Arg
     restart_parser.add_argument("--skip-check", action="store_true", help="跳过 Clash 配置检查")
 
     init_parser = subparsers.add_parser("init-config", help="生成示例配置")
-    init_parser.add_argument("--path", help="输出配置路径 (默认同 --config)")
+    init_parser.add_argument("--path", help="输出配置路径 (默认: ~/.config/clash-sub-manager/config.json)")
     init_parser.add_argument("--overwrite", action="store_true", help="覆盖已有文件")
 
     return parser
@@ -71,8 +80,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
 
+    config_path = Path(args.config or default_config).expanduser()
+    api_config_path = Path(args.api_config or default_api).expanduser()
+
     if args.command == "init-config":
-        target = Path(args.path) if args.path else Path(args.config)
+        default_target = Path(args.config).expanduser() if args.config else default_config_path()
+        target = Path(args.path).expanduser() if args.path else default_target
         try:
             path = write_sample_config(target, overwrite=args.overwrite)
             print(f"{Colors.GREEN}✓ 示例配置已写入: {path}{Colors.NC}")
@@ -84,16 +97,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{Colors.RED}✗ 写入示例配置失败: {exc}{Colors.NC}")
             return 1
 
-    config_path = Path(args.config).expanduser()
     if not config_path.exists():
+        hint_cmd = "clash-sub init-config" if not args.config else f"clash-sub init-config --path {config_path}"
         print(f"{Colors.YELLOW}⚠ 未找到配置文件: {config_path}{Colors.NC}")
-        print(
-            f"{Colors.YELLOW}  提示: 首次使用请执行 `clash-sub init-config --path {config_path}` 并填写订阅信息{Colors.NC}"
-        )
+        print(f"{Colors.YELLOW}  提示: 首次使用请执行 `{hint_cmd}` 并填写订阅信息{Colors.NC}")
         return 1
 
     try:
-        manager = ClashSubscriptionManager(config_path=config_path, api_config_path=args.api_config)
+        manager = ClashSubscriptionManager(config_path=config_path, api_config_path=api_config_path)
     except Exception as exc:
         print(f"{Colors.RED}✗ 初始化失败: {exc}{Colors.NC}")
         return 1

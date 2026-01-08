@@ -38,7 +38,7 @@ uv sync
 
 ```bash
 uvx clash-subscription-manager clash-sub --help
-uvx clash-subscription-manager clash-sub init-config --path ~/.config/clash-sub-manager/config.json
+uvx clash-subscription-manager clash-sub init-config
 uvx clash-subscription-manager clash-proxy groups
 ```
 
@@ -49,7 +49,8 @@ uvx clash-subscription-manager clash-proxy groups
 ### 1. 初始化配置
 
 ```bash
-clash-sub init-config --path ~/.config/clash-sub-manager/config.json
+clash-sub init-config
+# 默认写入 ~/.config/clash-sub-manager/config.json
 # 然后编辑配置文件，填入订阅与 Clash Party 路径
 ```
 

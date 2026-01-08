@@ -21,6 +21,16 @@ def _expand(path: Path) -> Path:
     return Path(path).expanduser()
 
 
+def default_config_path() -> Path:
+    """Return the standard config path under ~/.config."""
+    return _expand(DEFAULT_CONFIG_DIR / CONFIG_FILENAME)
+
+
+def default_api_config_path() -> Path:
+    """Return the standard API config path under ~/.config."""
+    return _expand(DEFAULT_CONFIG_DIR / API_CONFIG_FILENAME)
+
+
 def resolve_config_path(path: Optional[str | Path]) -> Path:
     """Return the config path to use, preferring CLI/env overrides."""
     candidate = path or os.getenv(ENV_CONFIG_PATH)
@@ -31,7 +41,7 @@ def resolve_config_path(path: Optional[str | Path]) -> Path:
     if cwd_candidate.exists():
         return cwd_candidate
 
-    return _expand(DEFAULT_CONFIG_DIR / CONFIG_FILENAME)
+    return default_config_path()
 
 
 def resolve_api_config_path(path: Optional[str | Path]) -> Path:
@@ -44,7 +54,7 @@ def resolve_api_config_path(path: Optional[str | Path]) -> Path:
     if cwd_candidate.exists():
         return cwd_candidate
 
-    return _expand(DEFAULT_CONFIG_DIR / API_CONFIG_FILENAME)
+    return default_api_config_path()
 
 
 def load_api_config(path: Optional[str | Path] = None) -> Tuple[str, str]:
