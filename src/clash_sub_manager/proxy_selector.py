@@ -2,28 +2,20 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import Dict, List, Optional, Tuple
 
 import requests
 
-from .config import load_api_config
 from .console import Colors
 
 
 class ClashProxySelector:
     """Interact with Clash proxy groups and nodes via the REST API."""
 
-    def __init__(
-        self,
-        api_url: Optional[str] = None,
-        secret: Optional[str] = None,
-        api_config_path: Optional[str | os.PathLike[str]] = None,
-    ):
-        config_url, config_secret = load_api_config(api_config_path)
-        self.api_url = (api_url or config_url).rstrip("/")
-        self.secret = secret if secret is not None and secret != "" else config_secret
+    def __init__(self, api_url: str, secret: Optional[str] = None):
+        self.api_url = api_url.rstrip("/")
+        self.secret = secret or ""
         self.headers = {"Authorization": f"Bearer {self.secret}"} if self.secret else {}
 
     def get_proxies(self) -> Dict:

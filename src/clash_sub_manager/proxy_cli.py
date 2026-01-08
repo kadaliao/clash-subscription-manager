@@ -6,12 +6,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import load_api_config, resolve_api_config_path
+from .config import default_config_display, read_api_from_config, resolve_config_path
 from .console import Colors
 from .proxy_selector import ClashProxySelector
 
 
-def build_parser(default_api_config: Path) -> argparse.ArgumentParser:
+def build_parser(default_config: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Clash 代理节点选择器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -25,7 +25,7 @@ def build_parser(default_api_config: Path) -> argparse.ArgumentParser:
         """,
     )
 
-    parser.add_argument("--api-config", default=str(default_api_config), help="API 配置文件路径")
+    parser.add_argument("--config", default=default_config, help="配置文件路径")
     parser.add_argument("--api", help="Clash API 地址，覆盖配置文件")
     parser.add_argument("--secret", help="API 密钥，覆盖配置文件")
 
@@ -43,20 +43,29 @@ def build_parser(default_api_config: Path) -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    default_api_config = resolve_api_config_path(None)
-    parser = build_parser(default_api_config)
+    parser = build_parser(default_config_display())
     args = parser.parse_args(argv)
 
     if not args.command:
         parser.print_help()
         return 0
 
-    api_config_path = Path(args.api_config)
-    file_api, file_secret = load_api_config(api_config_path)
+    config_path = resolve_config_path(args.config)
+    if not config_path.exists():
+        print(f"{Colors.RED}✗ 未找到配置文件: {config_path}{Colors.NC}")
+        print(f"{Colors.YELLOW}  提示: 请先运行 clash-sub init-config 生成配置{Colors.NC}")
+        return 1
+
+    try:
+        file_api, file_secret = read_api_from_config(config_path)
+    except Exception as exc:
+        print(f"{Colors.RED}✗ 读取 API 配置失败: {exc}{Colors.NC}")
+        return 1
+
     api_url = args.api or file_api
     secret = args.secret if args.secret is not None else file_secret
 
-    selector = ClashProxySelector(api_url=api_url, secret=secret, api_config_path=api_config_path)
+    selector = ClashProxySelector(api_url=api_url, secret=secret)
 
     try:
         if args.command == "groups":

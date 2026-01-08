@@ -7,12 +7,10 @@ import sys
 from pathlib import Path
 
 from .config import (
-    default_api_config_display,
-    default_api_config_path,
     default_config_display,
     default_config_path,
+    detect_api_credentials,
     detect_clash_party_dir,
-    resolve_api_config_path,
     resolve_config_path,
     write_sample_config,
 )
@@ -20,7 +18,7 @@ from .console import Colors
 from .subscription_manager import ClashSubscriptionManager
 
 
-def build_parser(config_display: str, api_display: str) -> argparse.ArgumentParser:
+def build_parser(config_display: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Clash 订阅管理器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -66,9 +64,6 @@ def build_parser(config_display: str, api_display: str) -> argparse.ArgumentPars
     init_parser.add_argument("--path", help="输出配置路径 (默认: ~/.config/clash-sub-manager/config.json)")
     init_parser.add_argument("--overwrite", action="store_true", help="覆盖已有文件")
 
-    import_api_parser = subparsers.add_parser("import-api", help="从 .clash-api-config 导入 API 配置到 config.json")
-    import_api_parser.add_argument("--path", help=f"API 配置文件路径 (默认: {api_display})")
-
     import_party_parser = subparsers.add_parser("import-party", help="从 Clash Party 导入订阅")
     import_party_parser.add_argument("--overwrite", action="store_true", help="覆盖同名订阅")
     import_party_parser.add_argument("--prefix", default="", help="为导入的订阅名称添加前缀")
@@ -86,7 +81,7 @@ def humanize_path(path: Path) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser(default_config_display(), default_api_config_display())
+    parser = build_parser(default_config_display())
     args = parser.parse_args(argv)
 
     if not args.command:
@@ -98,7 +93,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.config
         else resolve_config_path(None)
     )
-    api_config_path = resolve_api_config_path(None)
 
     if args.command == "init-config":
         default_target = config_path if args.config else default_config_path()
@@ -113,6 +107,16 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(
                 f"{Colors.YELLOW}⚠ 未检测到 Clash Party 配置目录，稍后可在配置文件中手动设置 `clash_party_dir`{Colors.NC}"
+            )
+        detected_api = detect_api_credentials()
+        if detected_api:
+            overrides["api"] = {"url": detected_api[0], "secret": detected_api[1]}
+            print(
+                f"{Colors.GREEN}✓ 已检测到 Clash API: {detected_api[0]}{Colors.NC}"
+            )
+        else:
+            print(
+                f"{Colors.YELLOW}⚠ 未检测到 Clash API 配置，请在 config.json 中手动填写 api.url 与 api.secret{Colors.NC}"
             )
         try:
             path = write_sample_config(target, overwrite=args.overwrite, overrides=overrides)
@@ -133,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        manager = ClashSubscriptionManager(config_path=config_path, api_config_path=api_config_path)
+        manager = ClashSubscriptionManager(config_path=config_path)
     except Exception as exc:
         print(f"{Colors.RED}✗ 初始化失败: {exc}{Colors.NC}")
         return 1
@@ -153,8 +157,6 @@ def main(argv: list[str] | None = None) -> int:
             manager.toggle_subscription(args.name)
         elif args.command == "restart":
             manager.restart_clash(skip_check=args.skip_check)
-        elif args.command == "import-api":
-            manager.write_api_config_file(args.path)
         elif args.command == "import-party":
             manager.import_subscriptions_from_party(overwrite=args.overwrite, prefix=args.prefix or "")
     except KeyboardInterrupt:

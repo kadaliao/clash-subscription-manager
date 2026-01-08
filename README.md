@@ -83,7 +83,7 @@ clash-sub init-config
 > **重要：**
 > - `work_dir`: 脚本的工作目录（默认与 `config.json` 同目录）
 > - `clash_party_dir`: Clash Party 的配置目录（`clash-sub init-config` 会尝试自动检测）
-> - `api.url` / `api.secret`: Clash HTTP API 地址与密钥（可运行 `clash-sub import-api` 从 `.clash-api-config` 导入）
+> - `api.url` / `api.secret`: Clash HTTP API 地址与密钥
 > - 订阅 URL 需要与 Clash Party 中添加的订阅 URL **完全一致**
 > - 脚本会自动通过 URL 匹配找到对应的 profile ID
 
@@ -98,13 +98,7 @@ clash-sub init-config
 }
 ```
 
-如果你已经有 `.clash-api-config` 文件（Clash Party/Verge 默认生成），可以运行：
-
-```bash
-clash-sub import-api --path /path/to/.clash-api-config
-```
-
-命令会将该文件中的地址/密钥写入 `config.json` 并提示可以删除旧文件。
+`clash-sub init-config` 会自动尝试从常见路径（如 `~/.clash-api-config`、Clash Party 配置目录等）读取 `CLASH_API_URL/SECRET` 并写入到 `config.json`，若未检测到则需要手动填写。
 
 **如何获取 API 配置：**
 1. 打开 Clash Party 应用
@@ -116,7 +110,7 @@ clash-sub import-api --path /path/to/.clash-api-config
 
 ## 使用方法
 
-所有命令都支持 `--config` 与 `--api-config` 参数来覆盖默认路径，方便在不同机器或 CI 环境中使用。
+所有命令都支持 `--config` 参数来覆盖默认路径，方便在不同机器或 CI 环境中使用。
 
 ### 订阅管理 (clash-sub)
 
@@ -129,7 +123,6 @@ clash-sub remove <name>                  # 删除订阅
 clash-sub toggle <name>                  # 启用/禁用订阅
 clash-sub restart                        # 重启 Clash 服务
 clash-sub import-party [--overwrite]     # 从 Clash Party 导入订阅
-clash-sub import-api [--path FILE]       # 从 .clash-api-config 导入 API 配置
 clash-sub init-config                    # 快速生成配置模板
 ```
 
@@ -213,7 +206,7 @@ $ ./clash-proxy current
 - 或使用订阅转换服务（如 sub-web）转换为 Clash 格式
 
 ### 更新后节点仍然超时
-- 确保已配置 `.clash-api-config` 文件
+- 确保 `config.json` 中的 `api.url` 与 `api.secret` 正确
 - 检查 Clash Party 的外部控制器是否已启用
 - 查看更新日志中是否显示"✓ 已通过 API 重新加载配置"
 
@@ -228,4 +221,3 @@ MIT License
 ### 导入现有配置
 
 - `clash-sub import-party` 会读取 Clash Party 的 `profile.yaml`，把其中的订阅 URL 直接写入 `config.json`。可使用 `--overwrite` 覆盖同名订阅，或 `--prefix` 为导入的订阅名称统一加前缀。
-- `clash-sub import-api` 会根据 `config.json` 中的 `api` 字段生成（或覆盖） `.clash-api-config` 文件，便于兼容其他工具。可使用 `--path` 指定输出位置。

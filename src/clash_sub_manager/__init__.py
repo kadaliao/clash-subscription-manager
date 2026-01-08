@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from importlib import metadata
 
-from .config import load_api_config
 from .proxy_selector import ClashProxySelector
 from .subscription_manager import ClashSubscriptionManager
 
@@ -16,5 +15,4 @@ except metadata.PackageNotFoundError:  # pragma: no cover - dev installs
 __all__ = [
     "ClashSubscriptionManager",
     "ClashProxySelector",
-    "load_api_config",
 ]

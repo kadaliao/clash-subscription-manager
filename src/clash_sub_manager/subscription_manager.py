@@ -15,25 +15,15 @@ from typing import Dict, Optional
 import requests
 import yaml
 
-from .config import (
-    DEFAULT_WORK_DIR,
-    load_api_config,
-    resolve_api_config_path,
-    resolve_config_path,
-)
+from .config import DEFAULT_WORK_DIR, resolve_config_path
 from .console import Colors
 
 
 class ClashSubscriptionManager:
     """Manage downloading, validating, and syncing Clash subscriptions."""
 
-    def __init__(
-        self,
-        config_path: Optional[str | Path] = None,
-        api_config_path: Optional[str | Path] = None,
-    ):
+    def __init__(self, config_path: Optional[str | Path] = None):
         self.config_path = Path(resolve_config_path(config_path)).expanduser()
-        self.api_config_path = resolve_api_config_path(api_config_path)
         self.config = self.load_config()
 
         config_dir = self.config_path.parent
@@ -389,25 +379,6 @@ class ClashSubscriptionManager:
 
         print(f"{Colors.YELLOW}⚠ 无法自动重启，请手动重启 Clash Party 应用{Colors.NC}")
         return False
-
-    def import_api_config_from_file(self, path: Optional[str | Path] = None) -> bool:
-        """Import API credentials from legacy .clash-api-config file into config.json."""
-        target = Path(path).expanduser() if path else self.api_config_path
-        if not target.exists():
-            print(f"{Colors.RED}✗ 未找到 API 配置文件: {target}{Colors.NC}")
-            return False
-
-        url, secret = load_api_config(target)
-        if not url:
-            print(f"{Colors.RED}✗ API 配置文件缺少 CLASH_API_URL{Colors.NC}")
-            return False
-
-        self.config.setdefault("api", {})
-        self.config["api"]["url"] = url
-        self.config["api"]["secret"] = secret
-        self.save_config()
-        print(f"{Colors.GREEN}✓ 已导入 API 配置到 config.json (可删除 {target}){Colors.NC}")
-        return True
 
     def _sanitize_name(self, name: str) -> str:
         slug = re.sub(r"[^\w-]+", "-", name.strip())
