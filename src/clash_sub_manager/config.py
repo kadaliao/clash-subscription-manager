@@ -9,22 +9,13 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 CONFIG_FILENAME = "config.json"
-API_CONFIG_FILENAME = ".clash-api-config"
 ENV_CONFIG_PATH = "CLASH_SUB_CONFIG"
-ENV_API_CONFIG_PATH = "CLASH_API_CONFIG"
 DEFAULT_CONFIG_DIR_STR = "~/.config/clash-sub-manager"
 DEFAULT_CONFIG_DIR = Path(os.path.expanduser(DEFAULT_CONFIG_DIR_STR))
 DEFAULT_WORK_DIR = DEFAULT_CONFIG_DIR
 DEFAULT_API_URL = "http://127.0.0.1:9090"
 DEFAULT_API_SECRET = ""
 SAMPLE_API_CONFIG = {"url": DEFAULT_API_URL, "secret": ""}
-COMMON_API_CONFIG_FILES = [
-    ".clash-api-config",
-    "~/.clash-api-config",
-    "~/.config/mihomo-party/.clash-api-config",
-    "~/.config/clash-verge/.clash-api-config",
-    "~/Library/Application Support/mihomo-party/.clash-api-config",
-]
 COMMON_PARTY_DIRS = [
     "~/Library/Application Support/mihomo-party",
     "~/Library/Application Support/Clash Verge/mihomo-party",
@@ -125,49 +116,11 @@ def detect_clash_party_dir() -> Optional[Path]:
     return None
 
 
-def _parse_api_file(path: Path) -> Optional[Tuple[str, str]]:
-    try:
-        content = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return None
-
-    url = None
-    secret = ""
-    for line in content:
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = [item.strip() for item in line.split("=", 1)]
-        if key == "CLASH_API_URL":
-            url = value or url
-        elif key == "CLASH_API_SECRET":
-            secret = value
-
-    if not url:
-        return None
-    return url, secret
-
-
 def detect_api_credentials() -> Optional[Tuple[str, str]]:
     env_url = os.getenv("CLASH_API_URL")
     env_secret = os.getenv("CLASH_API_SECRET")
     if env_url:
         return env_url, env_secret or ""
-
-    candidate_paths = []
-    env_config = os.getenv(ENV_API_CONFIG_PATH)
-    if env_config:
-        candidate_paths.append(env_config)
-    candidate_paths.extend(COMMON_API_CONFIG_FILES[1:])
-
-    for candidate in candidate_paths:
-        path = _expand(Path(candidate))
-        if not path.exists():
-            continue
-        result = _parse_api_file(path)
-        if result:
-            return result
-
     return None
 
 

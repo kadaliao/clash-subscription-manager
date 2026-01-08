@@ -91,14 +91,7 @@ clash-sub init-config
 
 配置 `config.json` 中的 `api` 区块即可：
 
-```jsonc
-"api": {
-  "url": "http://127.0.0.1:9090",
-  "secret": "your-secret"
-}
-```
-
-`clash-sub init-config` 会自动尝试从常见路径（如 `~/.clash-api-config`、Clash Party 配置目录等）读取 `CLASH_API_URL/SECRET` 并写入到 `config.json`，若未检测到则需要手动填写。
+运行 `clash-sub init-config --api <url> --secret <secret>` 可以直接写入 API 配置；如果不提供参数且环境变量也未设置，命令会提示你手动输入 API 地址与 Secret（默认 `http://127.0.0.1:9090`），并写入 `config.json`。
 
 **如何获取 API 配置：**
 1. 打开 Clash Party 应用

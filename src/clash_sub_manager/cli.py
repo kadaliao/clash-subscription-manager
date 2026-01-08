@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from getpass import getpass
 from pathlib import Path
 
 from .config import (
+    DEFAULT_API_URL,
     default_config_display,
     default_config_path,
     detect_api_credentials,
@@ -63,6 +65,8 @@ def build_parser(config_display: str) -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser("init-config", help="生成示例配置")
     init_parser.add_argument("--path", help="输出配置路径 (默认: ~/.config/clash-sub-manager/config.json)")
     init_parser.add_argument("--overwrite", action="store_true", help="覆盖已有文件")
+    init_parser.add_argument("--api", help="Clash API 地址 (默认: http://127.0.0.1:9090)")
+    init_parser.add_argument("--secret", help="Clash API Secret (默认: 空)")
 
     import_party_parser = subparsers.add_parser("import-party", help="从 Clash Party 导入订阅")
     import_party_parser.add_argument("--overwrite", action="store_true", help="覆盖同名订阅")
@@ -78,6 +82,24 @@ def humanize_path(path: Path) -> str:
         return f"~/{expanded.relative_to(home)}"
     except (ValueError, RuntimeError):
         return str(expanded)
+
+
+def prompt_api_credentials(default_url: str, default_secret: str = "") -> tuple[str, str]:
+    if not sys.stdin.isatty():
+        return default_url, default_secret
+
+    try:
+        url_input = input(f"Clash API 地址 [{default_url}]: ").strip()
+    except EOFError:
+        url_input = ""
+    url = url_input or default_url
+
+    try:
+        secret_input = getpass("Clash API Secret (可留空): ")
+    except EOFError:
+        secret_input = ""
+    secret = secret_input or default_secret
+    return url, secret
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -108,16 +130,20 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"{Colors.YELLOW}⚠ 未检测到 Clash Party 配置目录，稍后可在配置文件中手动设置 `clash_party_dir`{Colors.NC}"
             )
-        detected_api = detect_api_credentials()
-        if detected_api:
-            overrides["api"] = {"url": detected_api[0], "secret": detected_api[1]}
-            print(
-                f"{Colors.GREEN}✓ 已检测到 Clash API: {detected_api[0]}{Colors.NC}"
-            )
+        if args.api or args.secret is not None:
+            overrides["api"] = {
+                "url": args.api or DEFAULT_API_URL,
+                "secret": args.secret or "",
+            }
         else:
-            print(
-                f"{Colors.YELLOW}⚠ 未检测到 Clash API 配置，请在 config.json 中手动填写 api.url 与 api.secret{Colors.NC}"
-            )
+            detected_api = detect_api_credentials()
+            if detected_api:
+                overrides["api"] = {"url": detected_api[0], "secret": detected_api[1]}
+                print(f"{Colors.GREEN}✓ 已检测到 Clash API: {detected_api[0]}{Colors.NC}")
+            else:
+                prompt_url, prompt_secret = prompt_api_credentials(DEFAULT_API_URL)
+                overrides["api"] = {"url": prompt_url, "secret": prompt_secret}
+                print(f"{Colors.GREEN}✓ 已设置 Clash API: {prompt_url}{Colors.NC}")
         try:
             path = write_sample_config(target, overwrite=args.overwrite, overrides=overrides)
             print(f"{Colors.GREEN}✓ 示例配置已写入: {humanize_path(path)}{Colors.NC}")
