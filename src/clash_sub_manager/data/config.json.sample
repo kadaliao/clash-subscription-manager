@@ -1,0 +1,16 @@
+{
+  "work_dir": "~/.clash-sub-manager",
+  "clash_party_dir": "~/Library/Application Support/mihomo-party",
+  "subscriptions": {
+    "example-subscription": {
+      "url": "https://your-subscription-url",
+      "enabled": true,
+      "description": "示例订阅"
+    }
+  },
+  "backup": {
+    "enabled": true,
+    "max_backups": 5
+  },
+  "auto_restart": true
+}
