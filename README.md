@@ -32,6 +32,18 @@ uv sync
 
 开发模式下建议通过 `uv run python -m clash_sub_manager.cli --help` / `uv run python -m clash_sub_manager.proxy_cli --help` 运行，也可以直接使用 `python -m clash_sub_manager.*`。
 
+### 方式三：通过 uvx 临时运行
+
+无需提前安装，可使用 `uvx`（uv >= 0.4）直接执行：
+
+```bash
+uvx clash-subscription-manager clash-sub --help
+uvx clash-subscription-manager clash-sub init-config --path ~/.config/clash-sub-manager/config.json
+uvx clash-subscription-manager clash-proxy groups
+```
+
+`uvx` 会自动拉取并缓存依赖，适合一次性使用或 CI/CD 脚本。
+
 ## 快速开始
 
 ### 1. 初始化配置

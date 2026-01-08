@@ -84,11 +84,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{Colors.RED}✗ 写入示例配置失败: {exc}{Colors.NC}")
             return 1
 
-    try:
-        manager = ClashSubscriptionManager(
-            config_path=args.config,
-            api_config_path=args.api_config,
+    config_path = Path(args.config).expanduser()
+    if not config_path.exists():
+        print(f"{Colors.YELLOW}⚠ 未找到配置文件: {config_path}{Colors.NC}")
+        print(
+            f"{Colors.YELLOW}  提示: 首次使用请执行 `clash-sub init-config --path {config_path}` 并填写订阅信息{Colors.NC}"
         )
+        return 1
+
+    try:
+        manager = ClashSubscriptionManager(config_path=config_path, api_config_path=args.api_config)
     except Exception as exc:
         print(f"{Colors.RED}✗ 初始化失败: {exc}{Colors.NC}")
         return 1
