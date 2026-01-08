@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clash-subscription-manager"
-version = "0.6.1"
+version = "0.6.2"
 description = "A simple tool to manage and update Clash proxy subscriptions"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,6 +21,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+
+[project.urls]
+Homepage = "https://github.com/kadaliao/clash-subscription-manager"
+Source = "https://github.com/kadaliao/clash-subscription-manager"
+Tracker = "https://github.com/kadaliao/clash-subscription-manager/issues"
 
 [project.scripts]
 clash-sub = "clash_sub_manager.cli:main"
