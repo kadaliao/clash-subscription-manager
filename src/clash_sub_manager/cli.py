@@ -67,6 +67,7 @@ def build_parser(config_display: str) -> argparse.ArgumentParser:
     init_parser.add_argument("--overwrite", action="store_true", help="覆盖已有文件")
     init_parser.add_argument("--api", help="Clash API 地址 (默认: http://127.0.0.1:9090)")
     init_parser.add_argument("--secret", help="Clash API Secret (默认: 空)")
+    init_parser.add_argument("--skip-import-party", action="store_true", help="跳过自动导入 Clash Party 订阅")
 
     import_party_parser = subparsers.add_parser("import-party", help="从 Clash Party 导入订阅")
     import_party_parser.add_argument("--overwrite", action="store_true", help="覆盖同名订阅")
@@ -147,6 +148,15 @@ def main(argv: list[str] | None = None) -> int:
         try:
             path = write_sample_config(target, overwrite=args.overwrite, overrides=overrides)
             print(f"{Colors.GREEN}✓ 示例配置已写入: {humanize_path(path)}{Colors.NC}")
+            if not args.skip_import_party:
+                try:
+                    manager = ClashSubscriptionManager(config_path=path)
+                    if manager.import_subscriptions_from_party(overwrite=False):
+                        print(f"{Colors.GREEN}✓ 已自动从 Clash Party 导入订阅{Colors.NC}")
+                    else:
+                        print(f"{Colors.YELLOW}⚠ 未能导入订阅，可稍后运行 `clash-sub import-party`{Colors.NC}")
+                except Exception as exc:
+                    print(f"{Colors.YELLOW}⚠ 自动导入订阅失败: {exc}，可稍后运行 `clash-sub import-party`{Colors.NC}")
             return 0
         except FileExistsError:
             print(f"{Colors.YELLOW}⚠ 文件已存在: {humanize_path(target)}，使用 --overwrite 可以覆盖{Colors.NC}")

@@ -54,7 +54,7 @@ clash-sub init-config
 # 然后编辑配置文件，填入订阅与 Clash Party 路径
 ```
 
-初始化时默认将 `work_dir` 指向配置文件所在目录，并会尝试自动扫描系统中常见的 Clash Party/mihomo-party 安装路径，若检测到会自动填入 `clash_party_dir`。如未找到，可手动修改配置文件。
+初始化时默认将 `work_dir` 指向配置文件所在目录，并会尝试自动扫描系统中常见的 Clash Party/mihomo-party 安装路径，若检测到会自动填入 `clash_party_dir`。如未找到，可手动修改配置文件。运行 `clash-sub init-config --api <url> --secret <secret>` 可以直接写入 API 配置；如果不提供参数且环境变量也未设置，命令会提示你手动输入 API 地址与 Secret（默认 `http://127.0.0.1:9090`）。初始化完成后会自动执行一次 `import-party` 将 Clash Party 中的订阅写入配置，如不需要可加 `--skip-import-party`。
 
 配置示例：
 ```json
