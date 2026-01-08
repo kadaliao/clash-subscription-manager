@@ -3,18 +3,26 @@
 from __future__ import annotations
 
 import os
+import json
 from importlib import resources
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 CONFIG_FILENAME = "config.json"
 API_CONFIG_FILENAME = ".clash-api-config"
 ENV_CONFIG_PATH = "CLASH_SUB_CONFIG"
 ENV_API_CONFIG_PATH = "CLASH_API_CONFIG"
 DEFAULT_CONFIG_DIR = Path(os.path.expanduser("~/.config/clash-sub-manager"))
-DEFAULT_WORK_DIR = Path(os.path.expanduser("~/.clash-sub-manager"))
+DEFAULT_WORK_DIR = DEFAULT_CONFIG_DIR
 DEFAULT_API_URL = "http://127.0.0.1:9090"
 DEFAULT_API_SECRET = ""
+COMMON_PARTY_DIRS = [
+    "~/Library/Application Support/mihomo-party",
+    "~/Library/Application Support/Clash Verge/mihomo-party",
+    "~/.config/mihomo-party",
+    "~/.config/clash-verge/mihomo-party",
+    "~/AppData/Roaming/mihomo-party",
+]
 
 
 def _expand(path: Path) -> Path:
@@ -89,7 +97,11 @@ def get_sample_config_text() -> str:
     return sample.read_text(encoding="utf-8")
 
 
-def write_sample_config(target: Path, overwrite: bool = False) -> Path:
+def write_sample_config(
+    target: Path,
+    overwrite: bool = False,
+    overrides: Optional[Dict[str, str]] = None,
+) -> Path:
     """Write the sample config to the desired path."""
     target = _expand(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -97,5 +109,44 @@ def write_sample_config(target: Path, overwrite: bool = False) -> Path:
     if target.exists() and not overwrite:
         raise FileExistsError(f"{target} already exists")
 
-    target.write_text(get_sample_config_text(), encoding="utf-8")
+    data = json.loads(get_sample_config_text())
+    overrides = overrides or {}
+    data.update({k: v for k, v in overrides.items() if v})
+
+    target.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return target
+
+
+def detect_clash_party_dir() -> Optional[Path]:
+    """Best-effort detection of Clash Party directory."""
+    candidates = []
+    env_dir = os.getenv("CLASH_PARTY_DIR")
+    if env_dir:
+        candidates.append(env_dir)
+
+    candidates.extend(COMMON_PARTY_DIRS)
+
+    for candidate in candidates:
+        path = _expand(Path(candidate))
+        if (path / "profile.yaml").exists():
+            return path
+
+    # fallback: scan common roots for profile.yaml
+    search_roots = [
+        Path(os.path.expanduser("~/Library/Application Support")),
+        Path(os.path.expanduser("~/.config")),
+        Path(os.path.expanduser("~/AppData/Roaming")),
+    ]
+
+    patterns = ["*/profile.yaml", "*/*/profile.yaml"]
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for pattern in patterns:
+            for sub in root.glob(pattern):
+                party_dir = sub.parent
+                if party_dir.name == "profiles":
+                    party_dir = party_dir.parent
+                return party_dir
+
+    return None

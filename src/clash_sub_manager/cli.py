@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .config import (
     default_config_path,
+    detect_clash_party_dir,
     resolve_api_config_path,
     resolve_config_path,
     write_sample_config,
@@ -84,10 +85,21 @@ def main(argv: list[str] | None = None) -> int:
     api_config_path = Path(args.api_config or default_api).expanduser()
 
     if args.command == "init-config":
-        default_target = Path(args.config).expanduser() if args.config else default_config_path()
+        default_target = config_path if args.config else default_config_path()
         target = Path(args.path).expanduser() if args.path else default_target
+        overrides = {"work_dir": str(target.parent)}
+        detected_party = detect_clash_party_dir()
+        if detected_party:
+            overrides["clash_party_dir"] = str(detected_party)
+            print(
+                f"{Colors.GREEN}✓ 已检测到 Clash Party 配置目录: {detected_party}{Colors.NC}"
+            )
+        else:
+            print(
+                f"{Colors.YELLOW}⚠ 未检测到 Clash Party 配置目录，稍后可在配置文件中手动设置 `clash_party_dir`{Colors.NC}"
+            )
         try:
-            path = write_sample_config(target, overwrite=args.overwrite)
+            path = write_sample_config(target, overwrite=args.overwrite, overrides=overrides)
             print(f"{Colors.GREEN}✓ 示例配置已写入: {path}{Colors.NC}")
             return 0
         except FileExistsError:

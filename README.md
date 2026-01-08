@@ -54,10 +54,12 @@ clash-sub init-config
 # 然后编辑配置文件，填入订阅与 Clash Party 路径
 ```
 
+初始化时默认将 `work_dir` 指向配置文件所在目录，并会尝试自动扫描系统中常见的 Clash Party/mihomo-party 安装路径，若检测到会自动填入 `clash_party_dir`。如未找到，可手动修改配置文件。
+
 配置示例：
 ```json
 {
-  "work_dir": "~/.clash-sub-manager",
+  "work_dir": "~/.config/clash-sub-manager",
   "clash_party_dir": "~/Library/Application Support/mihomo-party",
   "subscriptions": {
     "my-proxy": {
@@ -75,8 +77,8 @@ clash-sub init-config
 ```
 
 > **重要：**
-> - `work_dir`: 脚本的工作目录，用于存放下载的配置文件和备份
-> - `clash_party_dir`: Clash Party 的配置目录
+> - `work_dir`: 脚本的工作目录（默认与 `config.json` 同目录）
+> - `clash_party_dir`: Clash Party 的配置目录（`clash-sub init-config` 会尝试自动检测）
 > - 订阅 URL 需要与 Clash Party 中添加的订阅 URL **完全一致**
 > - 脚本会自动通过 URL 匹配找到对应的 profile ID
 

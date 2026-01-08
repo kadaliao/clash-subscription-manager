@@ -30,16 +30,19 @@ class ClashSubscriptionManager:
         config_path: Optional[str | Path] = None,
         api_config_path: Optional[str | Path] = None,
     ):
-        self.config_path = resolve_config_path(config_path)
+        self.config_path = Path(resolve_config_path(config_path)).expanduser()
         self.api_config_path = resolve_api_config_path(api_config_path)
         self.config = self.load_config()
+
+        config_dir = self.config_path.parent
 
         if "clash_dir" in self.config:
             clash_dir = Path(self.config["clash_dir"]).expanduser()
             self.work_dir = clash_dir
             party_dir = self.config.get("clash_party_dir", self.config["clash_dir"])
         else:
-            self.work_dir = Path(self.config.get("work_dir", DEFAULT_WORK_DIR)).expanduser()
+            default_work_dir = Path(self.config.get("work_dir", config_dir)).expanduser()
+            self.work_dir = default_work_dir
             party_dir = self.config.get("clash_party_dir")
             if not party_dir:
                 raise ValueError("配置缺少 clash_party_dir 字段，请先运行 clash-sub init-config 并填写配置路径")
