@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 
 from .config import (
+    default_api_config_display,
+    default_api_config_path,
+    default_config_display,
     default_config_path,
     detect_clash_party_dir,
     resolve_api_config_path,
@@ -17,7 +20,7 @@ from .console import Colors
 from .subscription_manager import ClashSubscriptionManager
 
 
-def build_parser(default_config: Path, default_api_config: Path) -> argparse.ArgumentParser:
+def build_parser(config_display: str, api_display: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Clash 订阅管理器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -33,12 +36,12 @@ def build_parser(default_config: Path, default_api_config: Path) -> argparse.Arg
     parser.add_argument(
         "--config",
         default=None,
-        help=f"配置文件路径 (默认: {default_config})",
+        help=f"配置文件路径 (默认: {config_display})",
     )
     parser.add_argument(
         "--api-config",
         default=None,
-        help=f"Clash API 配置文件 (.clash-api-config) (默认: {default_api_config})",
+        help=f"Clash API 配置文件 (.clash-api-config) (默认: {api_display})",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -71,18 +74,33 @@ def build_parser(default_config: Path, default_api_config: Path) -> argparse.Arg
     return parser
 
 
+def humanize_path(path: Path) -> str:
+    expanded = path.expanduser()
+    try:
+        home = Path.home()
+        return f"~/{expanded.relative_to(home)}"
+    except (ValueError, RuntimeError):
+        return str(expanded)
+
+
 def main(argv: list[str] | None = None) -> int:
-    default_config = resolve_config_path(None)
-    default_api = resolve_api_config_path(None)
-    parser = build_parser(default_config, default_api)
+    parser = build_parser(default_config_display(), default_api_config_display())
     args = parser.parse_args(argv)
 
     if not args.command:
         parser.print_help()
         return 0
 
-    config_path = Path(args.config or default_config).expanduser()
-    api_config_path = Path(args.api_config or default_api).expanduser()
+    config_path = (
+        Path(args.config).expanduser()
+        if args.config
+        else resolve_config_path(None)
+    )
+    api_config_path = (
+        Path(args.api_config).expanduser()
+        if args.api_config
+        else resolve_api_config_path(None)
+    )
 
     if args.command == "init-config":
         default_target = config_path if args.config else default_config_path()
@@ -92,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         if detected_party:
             overrides["clash_party_dir"] = str(detected_party)
             print(
-                f"{Colors.GREEN}✓ 已检测到 Clash Party 配置目录: {detected_party}{Colors.NC}"
+                f"{Colors.GREEN}✓ 已检测到 Clash Party 配置目录: {humanize_path(detected_party)}{Colors.NC}"
             )
         else:
             print(
@@ -100,18 +118,19 @@ def main(argv: list[str] | None = None) -> int:
             )
         try:
             path = write_sample_config(target, overwrite=args.overwrite, overrides=overrides)
-            print(f"{Colors.GREEN}✓ 示例配置已写入: {path}{Colors.NC}")
+            print(f"{Colors.GREEN}✓ 示例配置已写入: {humanize_path(path)}{Colors.NC}")
             return 0
         except FileExistsError:
-            print(f"{Colors.YELLOW}⚠ 文件已存在: {target}，使用 --overwrite 可以覆盖{Colors.NC}")
+            print(f"{Colors.YELLOW}⚠ 文件已存在: {humanize_path(target)}，使用 --overwrite 可以覆盖{Colors.NC}")
             return 1
         except OSError as exc:
             print(f"{Colors.RED}✗ 写入示例配置失败: {exc}{Colors.NC}")
             return 1
 
     if not config_path.exists():
-        hint_cmd = "clash-sub init-config" if not args.config else f"clash-sub init-config --path {config_path}"
-        print(f"{Colors.YELLOW}⚠ 未找到配置文件: {config_path}{Colors.NC}")
+        human_path = humanize_path(config_path)
+        hint_cmd = "clash-sub init-config" if not args.config else f"clash-sub init-config --path {human_path}"
+        print(f"{Colors.YELLOW}⚠ 未找到配置文件: {human_path}{Colors.NC}")
         print(f"{Colors.YELLOW}  提示: 首次使用请执行 `{hint_cmd}` 并填写订阅信息{Colors.NC}")
         return 1
 

@@ -12,8 +12,10 @@ CONFIG_FILENAME = "config.json"
 API_CONFIG_FILENAME = ".clash-api-config"
 ENV_CONFIG_PATH = "CLASH_SUB_CONFIG"
 ENV_API_CONFIG_PATH = "CLASH_API_CONFIG"
-DEFAULT_CONFIG_DIR = Path(os.path.expanduser("~/.config/clash-sub-manager"))
+DEFAULT_CONFIG_DIR_STR = "~/.config/clash-sub-manager"
+DEFAULT_CONFIG_DIR = Path(os.path.expanduser(DEFAULT_CONFIG_DIR_STR))
 DEFAULT_WORK_DIR = DEFAULT_CONFIG_DIR
+DEFAULT_API_CONFIG_STR = f"{DEFAULT_CONFIG_DIR_STR}/{API_CONFIG_FILENAME}"
 DEFAULT_API_URL = "http://127.0.0.1:9090"
 DEFAULT_API_SECRET = ""
 COMMON_PARTY_DIRS = [
@@ -34,9 +36,17 @@ def default_config_path() -> Path:
     return _expand(DEFAULT_CONFIG_DIR / CONFIG_FILENAME)
 
 
+def default_config_display() -> str:
+    return f"{DEFAULT_CONFIG_DIR_STR}/{CONFIG_FILENAME}"
+
+
 def default_api_config_path() -> Path:
     """Return the standard API config path under ~/.config."""
     return _expand(DEFAULT_CONFIG_DIR / API_CONFIG_FILENAME)
+
+
+def default_api_config_display() -> str:
+    return DEFAULT_API_CONFIG_STR
 
 
 def resolve_config_path(path: Optional[str | Path]) -> Path:

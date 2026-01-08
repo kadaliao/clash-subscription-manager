@@ -118,8 +118,8 @@ wheels = [
 
 [[package]]
 name = "clash-subscription-manager"
-version = "0.2.0"
-source = { editable = "." }
+version = "0.3.0"
+source = { virtual = "." }
 dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
