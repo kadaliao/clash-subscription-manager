@@ -38,11 +38,6 @@ def build_parser(config_display: str, api_display: str) -> argparse.ArgumentPars
         default=None,
         help=f"配置文件路径 (默认: {config_display})",
     )
-    parser.add_argument(
-        "--api-config",
-        default=None,
-        help=f"Clash API 配置文件 (.clash-api-config) (默认: {api_display})",
-    )
 
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
 
@@ -71,8 +66,8 @@ def build_parser(config_display: str, api_display: str) -> argparse.ArgumentPars
     init_parser.add_argument("--path", help="输出配置路径 (默认: ~/.config/clash-sub-manager/config.json)")
     init_parser.add_argument("--overwrite", action="store_true", help="覆盖已有文件")
 
-    import_api_parser = subparsers.add_parser("import-api", help="将 API 配置写入 .clash-api-config 文件")
-    import_api_parser.add_argument("--path", help="API 配置文件输出路径 (默认: ~/.config/clash-sub-manager/.clash-api-config)")
+    import_api_parser = subparsers.add_parser("import-api", help="从 .clash-api-config 导入 API 配置到 config.json")
+    import_api_parser.add_argument("--path", help=f"API 配置文件路径 (默认: {api_display})")
 
     import_party_parser = subparsers.add_parser("import-party", help="从 Clash Party 导入订阅")
     import_party_parser.add_argument("--overwrite", action="store_true", help="覆盖同名订阅")
@@ -103,11 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.config
         else resolve_config_path(None)
     )
-    api_config_path = (
-        Path(args.api_config).expanduser()
-        if args.api_config
-        else resolve_api_config_path(None)
-    )
+    api_config_path = resolve_api_config_path(None)
 
     if args.command == "init-config":
         default_target = config_path if args.config else default_config_path()

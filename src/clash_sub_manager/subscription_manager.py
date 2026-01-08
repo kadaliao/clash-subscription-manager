@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -68,12 +69,21 @@ class ClashSubscriptionManager:
 
     def get_api_credentials(self) -> tuple[str, str]:
         api_cfg = self.config.get("api", {}) or {}
+        env_url = os.getenv("CLASH_API_URL")
+        env_secret = os.getenv("CLASH_API_SECRET")
         cfg_url = api_cfg.get("url")
         cfg_secret = api_cfg.get("secret")
-        file_url, file_secret = load_api_config(self.api_config_path)
-        api_url = cfg_url if cfg_url not in (None, "") else file_url
-        secret = cfg_secret if cfg_secret is not None else file_secret
-        return api_url, secret
+
+        url = env_url or cfg_url
+        secret = env_secret if env_secret is not None else cfg_secret
+
+        if url in (None, ""):
+            raise ValueError("config.json 缺少 api.url，请先运行 clash-sub init-config 或手动填写")
+
+        if secret is None:
+            secret = ""
+
+        return url, secret
 
     def save_config(self) -> None:
         """Persist the config file."""
@@ -380,25 +390,23 @@ class ClashSubscriptionManager:
         print(f"{Colors.YELLOW}⚠ 无法自动重启，请手动重启 Clash Party 应用{Colors.NC}")
         return False
 
-    def write_api_config_file(self, path: Optional[str | Path] = None) -> bool:
-        """Write API credentials from config.json to a .clash-api-config file."""
-        api_cfg = self.config.get("api") or {}
-        url = api_cfg.get("url")
-        secret = api_cfg.get("secret", "")
-
-        if not url:
-            print(f"{Colors.RED}✗ config.json 中缺少 api.url，请先编辑配置或运行 clash-sub init-config{Colors.NC}")
+    def import_api_config_from_file(self, path: Optional[str | Path] = None) -> bool:
+        """Import API credentials from legacy .clash-api-config file into config.json."""
+        target = Path(path).expanduser() if path else self.api_config_path
+        if not target.exists():
+            print(f"{Colors.RED}✗ 未找到 API 配置文件: {target}{Colors.NC}")
             return False
 
-        target = Path(path).expanduser() if path else self.api_config_path
-        target.parent.mkdir(parents=True, exist_ok=True)
+        url, secret = load_api_config(target)
+        if not url:
+            print(f"{Colors.RED}✗ API 配置文件缺少 CLASH_API_URL{Colors.NC}")
+            return False
 
-        content = [
-            f"CLASH_API_URL={url}",
-            f"CLASH_API_SECRET={secret}",
-        ]
-        target.write_text("\n".join(content) + "\n", encoding="utf-8")
-        print(f"{Colors.GREEN}✓ 已写入 API 配置文件: {target}{Colors.NC}")
+        self.config.setdefault("api", {})
+        self.config["api"]["url"] = url
+        self.config["api"]["secret"] = secret
+        self.save_config()
+        print(f"{Colors.GREEN}✓ 已导入 API 配置到 config.json (可删除 {target}){Colors.NC}")
         return True
 
     def _sanitize_name(self, name: str) -> str:

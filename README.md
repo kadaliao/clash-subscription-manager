@@ -89,14 +89,22 @@ clash-sub init-config
 
 ### 2. 配置 Clash API
 
-用于自动重新加载配置和节点管理功能，工具默认从 `~/.config/clash-sub-manager/.clash-api-config` 读取，可以通过 `--api-config` 指定其他路径。
+配置 `config.json` 中的 `api` 区块即可：
+
+```jsonc
+"api": {
+  "url": "http://127.0.0.1:9090",
+  "secret": "your-secret"
+}
+```
+
+如果你已经有 `.clash-api-config` 文件（Clash Party/Verge 默认生成），可以运行：
 
 ```bash
-cat > ~/.config/clash-sub-manager/.clash-api-config <<'EOF'
-CLASH_API_URL=http://127.0.0.1:9090
-CLASH_API_SECRET=your-secret-here
-EOF
+clash-sub import-api --path /path/to/.clash-api-config
 ```
+
+命令会将该文件中的地址/密钥写入 `config.json` 并提示可以删除旧文件。
 
 **如何获取 API 配置：**
 1. 打开 Clash Party 应用
